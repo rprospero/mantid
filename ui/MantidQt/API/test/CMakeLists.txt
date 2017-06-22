@@ -1,15 +1,15 @@
 if ( CXXTEST_FOUND )
     include_directories ( SYSTEM ${CXXTEST_INCLUDE_DIR} ${GMOCK_INCLUDE_DIR} ${GTEST_INCLUDE_DIR} )
 
-    include_directories ( ../../../Framework/TestHelpers/inc
-                          ../../../Framework/DataObjects/inc
-						  ../../../Framework/Crystal/inc)
+    include_directories ( ${TESTHELPERS_INCLUDE_DIR}
+                          ${FRAMEWORK_DIR}/DataObjects/inc
+						  ${FRAMEWORK_DIR}/Crystal/inc)
     # This variable is used within the cxxtest_add_test macro to build these helper classes into the test executable.
     # It will go out of scope at the end of this file so doesn't need un-setting
-    set ( TESTHELPER_SRCS ../../../Framework/TestHelpers/src/TearDownWorld.cpp
-                          ../../../Framework/TestHelpers/src/ComponentCreationHelper.cpp
-                          ../../../Framework/TestHelpers/src/InstrumentCreationHelper.cpp
-                          ../../../Framework/TestHelpers/src/WorkspaceCreationHelper.cpp
+    set ( TESTHELPER_SRCS ${TESTHELPERS_SRC_DIR}/TearDownWorld.cpp
+                          ${TESTHELPERS_SRC_DIR}/ComponentCreationHelper.cpp
+                          ${TESTHELPERS_SRC_DIR}/InstrumentCreationHelper.cpp
+                          ${TESTHELPERS_SRC_DIR}/WorkspaceCreationHelper.cpp
         )
 
     cxxtest_add_test ( MantidQtAPITest ${TEST_FILES} )

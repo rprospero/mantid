@@ -148,7 +148,7 @@ qt4_wrap_ui ( UI_HDRS ${UI_FILES} )
 
 include_directories ( ${CMAKE_CURRENT_BINARY_DIR})
 
-include_directories ( ../../Framework/DataObjects/inc )
+include_directories ( ${FRAMEWORK_DIR}/DataObjects/inc )
 
 # For Windows:
 add_definitions ( -DIN_MANTIDQT_SLICEVIEWER )
@@ -182,12 +182,12 @@ endif ()
 if ( CXXTEST_FOUND )
   include_directories ( SYSTEM ${CXXTEST_INCLUDE_DIR} ${GMOCK_INCLUDE_DIR} ${GTEST_INCLUDE_DIR} )
 
-  include_directories( ../../Framework/TestHelpers/inc ../../Framework/DataObjects/inc ../../Framework/Crystal/inc)
+  include_directories( ${TESTHELPERS_INCLUDE_DIR} ${FRAMEWORK_DIR}/DataObjects/inc ${FRAMEWORK_DIR}/Crystal/inc)
 
   set ( TESTHELPER_SRCS
-    ../../Framework/TestHelpers/src/InstrumentCreationHelper.cpp
-    ../../Framework/TestHelpers/src/WorkspaceCreationHelper.cpp
-    ../../Framework/TestHelpers/src/ComponentCreationHelper.cpp
+    ${TESTHELPERS_SRC_DIR}/InstrumentCreationHelper.cpp
+    ${TESTHELPERS_SRC_DIR}/WorkspaceCreationHelper.cpp
+    ${TESTHELPERS_SRC_DIR}/ComponentCreationHelper.cpp
   )
 
   cxxtest_add_test ( SliceViewerTest ${TEST_FILES} ${GMOCK_TEST_FILES} )

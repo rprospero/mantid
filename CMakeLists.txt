@@ -13,7 +13,15 @@ set ( SYSTEM_PACKAGE_TARGET "")
 # Add the path to our custom 'find' modules
 set ( CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/buildconfig/CMake")
 
+# Build options
 set ( ENABLE_MANTIDPLOT ON CACHE BOOL "Switch for compiling the gui components")
+set ( CXXTEST_SINGLE_LOGFILE CACHE BOOL "Switch to have the tests for each package run together")
+set ( CXXTEST_ADD_PERFORMANCE OFF CACHE BOOL "Switch to add Performance tests to the list of tests run by ctest?")
+
+if ( UNIX )
+  #Experimental feature. Unix only at this point.
+  set ( UNITY_BUILD OFF CACHE BOOL "Switch for utilising unity builds. Faster builds for selected components.")
+endif ( UNIX )
 
 SET (CPACK_INSTALL_CMAKE_PROJECTS
      "${CMAKE_BINARY_DIR}" "Mantid" "ALL" "/")
@@ -74,13 +82,6 @@ endif ()
 include ( CommonSetup )
 
 ###########################################################################
-# Check for Qt (DarwinSetup below needs a variable from this)
-###########################################################################
-if (ENABLE_MANTIDPLOT)
-  find_package ( Qt4 COMPONENTS QtCore QtGui QtOpenGL QtXml QtSvg REQUIRED )
-endif ()
-
-###########################################################################
 # Find OpenGL
 ###########################################################################
 find_package ( OpenGL REQUIRED )
@@ -100,36 +101,9 @@ if (COVERALLS)
 endif()
 
 ###########################################################################
-# Find qwt. Needs to be version 5
-###########################################################################
-if (ENABLE_MANTIDPLOT)
-  find_package ( Qwt REQUIRED )
-  if( QWT_VERSION VERSION_LESS 5.0 OR QWT_VERSION VERSION_EQUAL 6.0 OR
-      QWT_VERSION VERSION_GREATER 6.0 )
-    message ( FATAL_ERROR "Qwt version 5 is required, found: ${QWT_VERSION}" )
-  endif()
-endif()
-
-###########################################################################
-# Find PyQt & sip
-###########################################################################
-if (ENABLE_MANTIDPLOT)
-  find_package ( PyQt4 REQUIRED )
-  find_package ( SIP REQUIRED )
-  separate_arguments ( PYQT4_SIP_FLAGS )
-endif()
-
-###########################################################################
 # gsl is currently needed by Geometry, Algorithms, Curvefitting, & MantidPlot
 ###########################################################################
 find_package ( GSL REQUIRED )
-
-###########################################################################
-# Add QtPropertyBrowser to build
-###########################################################################
-if (ENABLE_MANTIDPLOT)
-  add_subdirectory ( QtPropertyBrowser )
-endif(ENABLE_MANTIDPLOT)
 
 ###########################################################################
 # Now add in all the components
@@ -140,11 +114,16 @@ set( FULL_PACKAGE_BUILD 1 )
 # the Kernel project for populating the properties file
 set( DOCS_BUILDDIR ${CMAKE_BINARY_DIR}/docs )
 
-# Framework Build options
-set ( CXXTEST_SINGLE_LOGFILE CACHE BOOL "Switch to have the tests for each package run together")
-set ( CXXTEST_ADD_PERFORMANCE OFF CACHE BOOL "Switch to add Performance tests to the list of tests run by ctest?")
-
 add_subdirectory ( Framework )
+
+# Location of the framework test helpers for unit testing
+set (FRAMEWORK_DIR ${CMAKE_CURRENT_LIST_DIR}/Framework )
+set (TESTHELPERS_INCLUDE_DIR ${FRAMEWORK_DIR}/TestHelpers/inc )
+set (TESTHELPERS_SRC_DIR ${FRAMEWORK_DIR}/TestHelpers/src )
+
+# Custom target for running all tests
+add_custom_target ( AllTests )
+add_dependencies ( AllTests FrameworkTests )
 
 include_directories ( Framework/Kernel/inc )
 include_directories ( Framework/HistogramData/inc )
@@ -157,48 +136,9 @@ include_directories ( Framework/Types/inc )
 set ( CORE_MANTIDLIBS Kernel HistogramData Indexing Geometry API Types )
 
 if (ENABLE_MANTIDPLOT)
-  # Add a target for all GUI tests
-  add_custom_target ( GUITests )
-  add_dependencies ( GUITests MantidWidgetsTest)
-  add_dependencies ( check GUITests )
-  # Collect all tests together
-  add_custom_target ( AllTests )
-  add_dependencies ( AllTests FrameworkTests GUITests )
-endif()
-
-if ( UNIX )
-  #Experimental feature. Unix only at this point.
-  set ( UNITY_BUILD OFF CACHE BOOL "Switch for utilising unity builds. Faster builds for selected components.")
-endif ( UNIX )
-
-if (ENABLE_MANTIDPLOT AND MAKE_VATES )
-  add_subdirectory ( Vates )
-  if (NOT APPLE)
-    LIST( APPEND CPACK_INSTALL_CMAKE_PROJECTS
-          "${ParaView_DIR}" "ParaView Runtime Libs" "Runtime" "${INBUNDLE}/"
-    )
-    LIST( APPEND CPACK_INSTALL_CMAKE_PROJECTS
-          "${ParaView_DIR}" "VTK Runtime Libs" "RuntimeLibraries" "${INBUNDLE}/"
-    )
-    LIST( APPEND CPACK_INSTALL_CMAKE_PROJECTS
-          "${ParaView_DIR}" "HDF5 Core Library" "libraries" "${INBUNDLE}/"
-    )
-    LIST( APPEND CPACK_INSTALL_CMAKE_PROJECTS
-          "${ParaView_DIR}" "HDF5 HL Library" "hllibraries" "${INBUNDLE}/"
-    )
-  endif()
-
-endif ( ENABLE_MANTIDPLOT AND MAKE_VATES )
-
-if ( MSVC )
-  add_definitions ( -DQWT_DLL )
+  add_subdirectory ( gui )
 endif ()
 
-if (ENABLE_MANTIDPLOT)
-  add_subdirectory ( MantidQt )
-
-  add_subdirectory ( MantidPlot )
-endif()
 
 add_subdirectory ( scripts )
 

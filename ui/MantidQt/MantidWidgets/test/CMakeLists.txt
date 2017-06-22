@@ -1,11 +1,11 @@
 if ( CXXTEST_FOUND )
   include_directories ( SYSTEM ${CXXTEST_INCLUDE_DIR} ${GMOCK_INCLUDE_DIR} ${GTEST_INCLUDE_DIR} )
 
-  include_directories( ../../../Framework/TestHelpers/inc ../../../Framework/DataObjects/inc )
+  include_directories( ${TESTHELPERS_INCLUDE_DIR} ${FRAMEWORK_DIR}/DataObjects/inc )
 
-  set ( TESTHELPER_SRCS ../../../Framework/TestHelpers/src/ComponentCreationHelper.cpp
-                        ../../../Framework/TestHelpers/src/InstrumentCreationHelper.cpp
-                        ../../../Framework/TestHelpers/src/WorkspaceCreationHelper.cpp
+  set ( TESTHELPER_SRCS ${TESTHELPERS_SRC_DIR}/ComponentCreationHelper.cpp
+                        ${TESTHELPERS_SRC_DIR}/InstrumentCreationHelper.cpp
+                        ${TESTHELPERS_SRC_DIR}/WorkspaceCreationHelper.cpp
       )
 
   cxxtest_add_test ( MantidWidgetsTest ${TEST_FILES} )

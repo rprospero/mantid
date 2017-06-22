@@ -167,12 +167,12 @@ endif ()
 # Create test file projects
 include_directories ( SYSTEM ${CXXTEST_INCLUDE_DIR} ${GMOCK_INCLUDE_DIR} ${GTEST_INCLUDE_DIR} )
 
-include_directories( inc ../../../Framework/TestHelpers/inc ../../../Framework/DataHandling/inc ../../../Framework/DataObjects/inc)
-set ( TESTHELPER_SRCS ../../../Framework/TestHelpers/src/ComponentCreationHelper.cpp
-                      ../../../Framework/TestHelpers/src/InstrumentCreationHelper.cpp
-                      ../../../Framework/TestHelpers/src/WorkspaceCreationHelper.cpp
-                      ../../../Framework/TestHelpers/src/MDEventsTestHelper.cpp
-                      ../../../Framework/TestHelpers/src/StartFrameworkManager.cpp )
+include_directories( inc ${TESTHELPERS_INCLUDE_DIR} ${FRAMEWORK_DIR}/DataHandling/inc ${FRAMEWORK_DIR}/DataObjects/inc)
+set ( TESTHELPER_SRCS ${TESTHELPERS_SRC_DIR}/ComponentCreationHelper.cpp
+                      ${TESTHELPERS_SRC_DIR}/InstrumentCreationHelper.cpp
+                      ${TESTHELPERS_SRC_DIR}/WorkspaceCreationHelper.cpp
+                      ${TESTHELPERS_SRC_DIR}/MDEventsTestHelper.cpp
+                      ${TESTHELPERS_SRC_DIR}/StartFrameworkManager.cpp )
 cxxtest_add_test( VatesSimpleGuiViewWidgetsTest ${TEST_FILES} )
 
 target_link_libraries( VatesSimpleGuiViewWidgetsTest LINK_PRIVATE ${TCMALLOC_LIBRARIES_LINKTIME}
