@@ -6,6 +6,7 @@
 # Qt
 ###########################################################################
 find_package ( Qt4 COMPONENTS QtCore QtGui QtOpenGL QtXml QtSvg REQUIRED )
+include ( UseQt4 )
 
 ###########################################################################
 # PyQt & sip
@@ -26,6 +27,8 @@ endif()
 if ( MSVC )
   add_definitions ( -DQWT_DLL )
 endif ()
+
+include_directories ( SYSTEM ${QWT_INCLUDE_DIR} )
 
 ################################################################################
 # Libraries, widgets etc
@@ -55,9 +58,25 @@ if ( MAKE_VATES )
 endif ()
 
 add_subdirectory ( widgets )
-add_subdirectory ( MantidQt )
+#add_subdirectory ( MantidQt )
 
 ################################################################################
 # User applications
 ################################################################################
-add_subdirectory (applications/mantidplot)
+#add_subdirectory (applications/mantidplot)
+
+###########################################################################
+# Windows: Generate a qt.conf file so that the dev build finds the qt
+# plugins in third party. Done in two steps to get it into the build
+# directory that is selected at build time.
+# This file is NOT packaged. See installers/WinInstaller for the package
+# version.
+###########################################################################
+if ( WIN32 )
+  set ( QT_CONF qt.conf )
+  configure_file ( qt.conf.template ${CMAKE_CURRENT_BINARY_DIR}/${QT_CONF} @ONLY )
+  add_custom_command ( TARGET MantidUiWidgetsCore POST_BUILD
+                       COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different
+                               ${CMAKE_CURRENT_BINARY_DIR}/${QT_CONF}
+                               ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/${QT_CONF} )
+endif()

@@ -1,0 +1,27 @@
+<RCC>
+    <qresource prefix="/PickTools">
+        <file alias="zoom.png">../../../../images/zoom.png</file>
+        <file alias="selection-tube.png">../../../../images/selection-tube.png</file>
+        <file alias="selection-box.png">../../../../images/selection-box.png</file>
+        <file alias="selection-circle.png">../../../../images/selection-circle.png</file>
+        <file alias="selection-pointer.png">../../../../images/selection-pointer.png</file>
+        <file alias="selection-text.png">../../../../images/selection-text.png</file>
+        <file alias="selection-peak.png">../../../../images/selection-peak.png</file>
+        <file alias="selection-peaks.png">../../../../images/selection-peaks.png</file>
+        <file alias="selection-edit.png">../../../../images/selection-edit.png</file>
+        <file alias="eraser.png">../../../../images/eraser.png</file>
+        <file alias="selection-box-ring.png">../../../../images/selection-box-ring.png</file>
+        <file alias="selection-circle-ring.png">../../../../images/selection-circle-ring.png</file>
+        <file alias="brush.png">../../../../images/brush.png</file>
+        <file alias="selection-peak-compare.png">../../../../images/selection-peak-compare.png</file>
+        <file alias="selection-peak-plane.png">../../../../images/selection-peak-plane.png</file>
+    </qresource>
+    <qresource prefix="/MaskTools">
+        <file alias="selection-circle.png">../../../../images/selection-circle.png</file>
+        <file alias="selection-box.png">../../../../images/selection-box.png</file>
+        <file alias="selection-box-ring.png">../../../../images/selection-box-ring.png</file>
+        <file alias="selection-circle-ring.png">../../../../images/selection-circle-ring.png</file>
+        <file alias="selection-edit.png">../../../../images/selection-edit.png</file>
+        <file alias="brush.png">../../../../images/brush.png</file>
+    </qresource>
+</RCC>
