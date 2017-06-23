@@ -54,7 +54,7 @@ if ( MAKE_VATES )
   endif ()
 endif ()
 
-add_subdirectory ( QtPropertyBrowser )
+add_subdirectory ( widgets )
 add_subdirectory ( MantidQt )
 
 ################################################################################

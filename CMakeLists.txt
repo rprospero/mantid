@@ -136,7 +136,7 @@ include_directories ( Framework/Types/inc )
 set ( CORE_MANTIDLIBS Kernel HistogramData Indexing Geometry API Types )
 
 if (ENABLE_MANTIDPLOT)
-  add_subdirectory ( gui )
+  add_subdirectory ( ui )
 endif ()
 
 
