@@ -81,16 +81,14 @@ class RunTabPresenter(object):
         reduction_mode = get_reduction_mode_strings_for_gui()
         self._view.reduction_mode = reduction_mode
 
-        # Set the the rebin type for wavelength
-        wavelength_rebin_type = [RebinType.to_string(RebinType.Rebin), RebinType.to_string(RebinType.InterpolatingRebin)]
-        self._view.wavelength_rebin_type = wavelength_rebin_type
-
         # Set the step type options for wavelength
         wavelength_step_type = [RangeStepType.to_string(RangeStepType.Lin), RangeStepType.to_string(RangeStepType.Log)]
         self._view.wavelength_step_type = wavelength_step_type
 
-        # Set the geometry options
-        sample_shape = [SampleShape.to_string(SampleShape.CylinderAxisUp), SampleShape.to_string(SampleShape.Cuboid),
+        # Set the geometry options. This needs to include the option to read the sample shape from file.
+        sample_shape = ["Read from file",
+                        SampleShape.to_string(SampleShape.CylinderAxisUp),
+                        SampleShape.to_string(SampleShape.Cuboid),
                         SampleShape.to_string(SampleShape.CylinderAxisAlong)]
         self._view.sample_shape = sample_shape
 
@@ -114,29 +112,29 @@ class RunTabPresenter(object):
         """
         Loads the user file. Populates the models and the view.
         """
-        # try:
-        # 1. Get the user file path from the view
-        user_file_path = self._view.get_user_file_path()
+        try:
+            # 1. Get the user file path from the view
+            user_file_path = self._view.get_user_file_path()
 
-        if not user_file_path:
-            return
+            if not user_file_path:
+                return
 
-        # 2. Get the full file path
-        user_file_path = FileFinder.getFullPath(user_file_path)
-        if not os.path.exists(user_file_path):
-            raise RuntimeError("The user path {} does not exist. Make sure a valid user file path"
-                               " has been specified.".format(user_file_path))
+            # 2. Get the full file path
+            user_file_path = FileFinder.getFullPath(user_file_path)
+            if not os.path.exists(user_file_path):
+                raise RuntimeError("The user path {} does not exist. Make sure a valid user file path"
+                                   " has been specified.".format(user_file_path))
 
-        # 3. Read and parse the user file
-        user_file_reader = UserFileReader(user_file_path)
-        user_file_items = user_file_reader.read_user_file()
+            # 3. Read and parse the user file
+            user_file_reader = UserFileReader(user_file_path)
+            user_file_items = user_file_reader.read_user_file()
 
-        # 4. Populate the model
-        self._state_model = StateGuiModel(user_file_items)
-        # 5. Update the views.
-        self._update_view_from_state_model()
-        # except Exception as e:
-        #    sans_logger.error("Loading of the user file failed. See here for more details: {}".format(str(e)))
+            # 4. Populate the model
+            self._state_model = StateGuiModel(user_file_items)
+            # 5. Update the views.
+            self._update_view_from_state_model()
+        except Exception as e:
+            sans_logger.error("Loading of the user file failed. See here for more details: {}".format(str(e)))
 
     def on_batch_file_load(self):
         """
@@ -324,6 +322,7 @@ class RunTabPresenter(object):
         """
         # Run tab view
         self._set_on_view("zero_error_free")
+        self._set_on_view("save_types")
 
         # Settings tab view
         self._set_on_view("reduction_dimensionality")
@@ -335,11 +334,14 @@ class RunTabPresenter(object):
         self._set_on_view("wavelength_max")
         self._set_on_view("wavelength_step")
 
-        self._set_on_view("sample_shape")
         self._set_on_view("absolute_scale")
+        self._set_on_view("sample_shape")
         self._set_on_view("sample_height")
         self._set_on_view("sample_width")
         self._set_on_view("sample_thickness")
+        self._set_on_view("z_offset")
+
+        self._set_on_view("compatibility_mode")
 
     def _set_on_view(self, attribute_name):
         attribute = getattr(self._state_model, attribute_name)
@@ -348,28 +350,35 @@ class RunTabPresenter(object):
 
     def _get_state_model_with_view_update(self):
         """
-        Goes through all sub presenters and update the state model based on the views
+        Goes through all sub presenters and update the state model based on the views.
+
+        Note that at the moment we have set up the view and the model such that the name of a property must be the same
+        in the view and the model. This can be easily changed, but it also provides a good cohesion.
         """
         state_model = copy.deepcopy(self._state_model)
 
         # Run tab view
         self._set_on_state_model("zero_error_free", state_model)
+        self._set_on_state_model("save_types", state_model)
 
         # Settings tab
         self._set_on_state_model("reduction_dimensionality", state_model)
         self._set_on_state_model("reduction_mode", state_model)
         self._set_on_state_model("event_slices", state_model)
 
-        # self._set_on_state_model("wavelength_step_type", state_model)
-        # self._set_on_state_model("wavelength_min", state_model)
-        # self._set_on_state_model("wavelength_max", state_model)
-        # self._set_on_state_model("wavelength_step", state_model)
+        self._set_on_state_model("wavelength_step_type", state_model)
+        self._set_on_state_model("wavelength_min", state_model)
+        self._set_on_state_model("wavelength_max", state_model)
+        self._set_on_state_model("wavelength_step", state_model)
 
-        # self._set_on_state_model("sample_shape", state_model)
-        # self._set_on_state_model("absolute_scale", state_model)
-        # self._set_on_state_model("sample_height", state_model)
-        # self._set_on_state_model("sample_width", state_model)
-        # self._set_on_state_model("sample_thickness", state_model)
+        self._set_on_state_model("absolute_scale", state_model)
+        self._set_on_state_model("sample_shape", state_model)
+        self._set_on_state_model("sample_height", state_model)
+        self._set_on_state_model("sample_width", state_model)
+        self._set_on_state_model("sample_thickness", state_model)
+        self._set_on_state_model("z_offset", state_model)
+
+        self._set_on_state_model("compatibility_mode", state_model)
 
         return state_model
 

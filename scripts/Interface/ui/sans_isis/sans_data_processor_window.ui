@@ -284,7 +284,7 @@ QGroupBox::title {
             </property>
             <widget class="QWidget" name="general_tab">
              <attribute name="title">
-              <string>General, Wavelength, Scale, Event Slice</string>
+              <string>General, Wavelength, Scale, Event Slice, Sample</string>
              </attribute>
              <layout class="QHBoxLayout" name="horizontalLayout_3">
               <item>
@@ -440,7 +440,7 @@ QGroupBox::title {
                     <item row="0" column="0">
                      <widget class="QGroupBox" name="scale_layout">
                       <property name="title">
-                       <string>Scale</string>
+                       <string>Scale and Sample</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_5">
                        <item row="0" column="0">
@@ -502,6 +502,9 @@ QGroupBox::title {
                          <item row="1" column="1">
                           <widget class="QComboBox" name="geometry_combo_box"/>
                          </item>
+                         <item row="5" column="1">
+                          <widget class="QLineEdit" name="z_offset_line_edit"/>
+                         </item>
                         </layout>
                        </item>
                       </layout>
@@ -553,7 +556,7 @@ QGroupBox::title {
      <x>0</x>
      <y>0</y>
      <width>979</width>
-     <height>22</height>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuEdit">

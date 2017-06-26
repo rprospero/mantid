@@ -958,6 +958,32 @@ class UserFileStateDirectorISIS(object):
             scales = scales[-1]
             self._scale_builder.set_scale(scales.s)
 
+        # We can also have settings for the sample geometry (Note that at the moment this is not settable via the
+        # user file nor the command line interface
+        if OtherId.sample_shape in user_file_items:
+            sample_shape = user_file_items[OtherId.sample_shape]
+            check_if_contains_only_one_element(sample_shape, OtherId.sample_shape)
+            sample_shape = sample_shape[-1]
+            self._scale_builder.set_shape(sample_shape)
+
+        if OtherId.sample_width in user_file_items:
+            sample_width = user_file_items[OtherId.sample_width]
+            check_if_contains_only_one_element(sample_width, OtherId.sample_width)
+            sample_width = sample_width[-1]
+            self._scale_builder.set_width(sample_width)
+
+        if OtherId.sample_height in user_file_items:
+            sample_height = user_file_items[OtherId.sample_height]
+            check_if_contains_only_one_element(sample_height, OtherId.sample_height)
+            sample_height = sample_height[-1]
+            self._scale_builder.set_height(sample_height)
+
+        if OtherId.sample_thickness in user_file_items:
+            sample_thickness = user_file_items[OtherId.sample_thickness]
+            check_if_contains_only_one_element(sample_thickness, OtherId.sample_thickness)
+            sample_thickness = sample_thickness[-1]
+            self._scale_builder.set_thickness(sample_thickness)
+
     def _set_up_convert_to_q_state(self, user_file_items):
         # Get the radius cut off if any is present
         set_single_entry(self._convert_to_q_builder, "set_radius_cutoff", LimitsId.radius_cut, user_file_items,

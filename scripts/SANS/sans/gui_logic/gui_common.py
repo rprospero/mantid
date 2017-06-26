@@ -17,6 +17,9 @@ MERGED = "Merged"
 ALL = "All"
 
 
+READ_FROM_FILE = "Read from file"
+
+
 def get_reduction_mode_strings_for_gui(instrument=None):
     if instrument is SANSInstrument.SANS2D:
         return [SANS2D_LAB, SANS2D_HAB, MERGED, ALL]

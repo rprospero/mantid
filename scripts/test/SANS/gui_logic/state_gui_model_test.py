@@ -2,8 +2,8 @@ from __future__ import (absolute_import, division, print_function)
 import unittest
 import mantid
 from sans.gui_logic.models.state_gui_model import StateGuiModel
-from sans.user_file.user_file_common import OtherId, event_binning_string_values
-from sans.common.enums import ReductionDimensionality
+from sans.user_file.user_file_common import (OtherId, event_binning_string_values, DetectorId)
+from sans.common.enums import (ReductionDimensionality, ISISReductionMode, RangeStepType, SampleShape, SaveType)
 
 
 class StateGuiModelTest(unittest.TestCase):
@@ -30,7 +30,7 @@ class StateGuiModelTest(unittest.TestCase):
         state_gui_model = StateGuiModel({"test": [1]})
         self.assertTrue(state_gui_model.reduction_dimensionality is ReductionDimensionality.OneDim)
 
-    def test_that_an_set_to_2D_reduction(self):
+    def test_that_is_set_to_2D_reduction(self):
         state_gui_model = StateGuiModel({"test": [1]})
         state_gui_model.reduction_dimensionality = ReductionDimensionality.TwoDim
         self.assertTrue(state_gui_model.reduction_dimensionality is ReductionDimensionality.TwoDim)
@@ -50,13 +50,102 @@ class StateGuiModelTest(unittest.TestCase):
     # ------------------------------------------------------------------------------------------------------------------
     # Reduction mode
     # ------------------------------------------------------------------------------------------------------------------
+    def test_that_is_set_to_lab_by_default(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        self.assertTrue(state_gui_model.reduction_mode is ISISReductionMode.LAB)
+
+    def test_that_can_be_set_to_something_else(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        state_gui_model.reduction_mode = ISISReductionMode.Merged
+        self.assertTrue(state_gui_model.reduction_mode is ISISReductionMode.Merged)
+
+    def test_that_raises_when_setting_with_wrong_input(self):
+        def red_mode_wrapper():
+            state_gui_model = StateGuiModel({"test": [1]})
+            state_gui_model.reduction_mode = "string"
+        self.assertRaises(ValueError, red_mode_wrapper)
+
+    def test_that_can_update_reduction_mode(self):
+        state_gui_model = StateGuiModel({DetectorId.reduction_mode: [ISISReductionMode.HAB]})
+        self.assertTrue(state_gui_model.reduction_mode is ISISReductionMode.HAB)
+        state_gui_model.reduction_mode = ISISReductionMode.All
+        self.assertTrue(state_gui_model.reduction_mode is ISISReductionMode.All)
 
     # ------------------------------------------------------------------------------------------------------------------
-    # Reduction mode
+    # Wavelength
     # ------------------------------------------------------------------------------------------------------------------
+    def test_that_default_wavelength_settings_are_empty(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        self.assertTrue(not state_gui_model.wavelength_min)
+        self.assertTrue(not state_gui_model.wavelength_max)
+        self.assertTrue(not state_gui_model.wavelength_step)
+
+    def test_that_default_wavelength_step_type_is_linear(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        self.assertTrue(state_gui_model.wavelength_step_type is RangeStepType.Lin)
+
+    def test_that_can_set_wavelength(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        state_gui_model.wavelength_min = 1.
+        state_gui_model.wavelength_max = 2.
+        state_gui_model.wavelength_step = .5
+        state_gui_model.wavelength_step_type = RangeStepType.Lin
+        state_gui_model.wavelength_step_type = RangeStepType.Log
+        self.assertTrue(state_gui_model.wavelength_min == 1.)
+        self.assertTrue(state_gui_model.wavelength_max == 2.)
+        self.assertTrue(state_gui_model.wavelength_step == .5)
+        self.assertTrue(state_gui_model.wavelength_step_type is RangeStepType.Log)
 
     # ------------------------------------------------------------------------------------------------------------------
-    # Zero error free saving
+    # Scale
+    # ------------------------------------------------------------------------------------------------------------------
+    def test_that_absolute_scale_has_an_empty_default_value(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        self.assertTrue(not state_gui_model.absolute_scale)
+
+    def test_that_can_set_absolute_scale(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        state_gui_model.absolute_scale = .5
+        self.assertTrue(state_gui_model.absolute_scale == .5)
+
+    def test_that_default_extents_are_empty(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        self.assertTrue(not state_gui_model.sample_width)
+        self.assertTrue(not state_gui_model.sample_height)
+        self.assertTrue(not state_gui_model.sample_thickness)
+        self.assertTrue(not state_gui_model.z_offset)
+
+    def test_that_default_sample_shape_is_cylinder_axis_up(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        self.assertTrue(state_gui_model.sample_shape is SampleShape.CylinderAxisUp)
+
+    def test_that_can_set_the_sample_geometry(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        state_gui_model.sample_width = 1.2
+        state_gui_model.sample_height = 1.6
+        state_gui_model.sample_thickness = 1.8
+        state_gui_model.z_offset = 1.78
+        state_gui_model.sample_shape = SampleShape.Cuboid
+        self.assertTrue(state_gui_model.sample_width == 1.2)
+        self.assertTrue(state_gui_model.sample_height == 1.6)
+        self.assertTrue(state_gui_model.sample_thickness == 1.8)
+        self.assertTrue(state_gui_model.z_offset == 1.78)
+        self.assertTrue(state_gui_model.sample_shape is SampleShape.Cuboid)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Compatibility Mode
+    # ------------------------------------------------------------------------------------------------------------------
+    def test_that_default_compatibility_mode_is_false(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        self.assertFalse(state_gui_model.compatibility_mode)
+
+    def test_that_can_set_compatibility_mode(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        state_gui_model.compatibility_mode = True
+        self.assertTrue(state_gui_model.compatibility_mode)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Save options
     # ------------------------------------------------------------------------------------------------------------------
     def test_that_can_zero_error_free_saving_is_default(self):
         state_gui_model = StateGuiModel({"test": [1]})
@@ -66,6 +155,16 @@ class StateGuiModelTest(unittest.TestCase):
         state_gui_model = StateGuiModel({OtherId.save_as_zero_error_free: [True]})
         state_gui_model.zero_error_free = False
         self.assertFalse(state_gui_model.zero_error_free)
+
+    def test_that_default_save_type_is_NXcanSAS(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        self.assertTrue(state_gui_model.save_types == [SaveType.NXcanSAS])
+
+    def test_that_can_select_multiple_save_types(self):
+        state_gui_model = StateGuiModel({"test": [1]})
+        state_gui_model.save_types = [SaveType.RKH, SaveType.NXcanSAS]
+        self.assertTrue(state_gui_model.save_types == [SaveType.RKH, SaveType.NXcanSAS])
+
 
 if __name__ == '__main__':
     unittest.main()

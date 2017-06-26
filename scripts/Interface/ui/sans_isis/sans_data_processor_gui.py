@@ -4,6 +4,7 @@ try:
 except ImportError:
     canMantidPlot = False
 
+import os
 import ui_sans_data_processor_window
 from PyQt4 import QtGui, QtCore
 from mantid.simpleapi import *
@@ -13,8 +14,8 @@ from inspect import isclass
 from mantidqtpython import MantidQt
 from sans.common.enums import (ReductionDimensionality, OutputMode, SaveType, SANSInstrument, RebinType,
                                RangeStepType, SampleShape)
-from sans.gui_logic.gui_common import (get_reduction_mode_from_gui_selection, get_string_for_gui_from_reduction_mode)
-
+from sans.gui_logic.gui_common import (get_reduction_mode_from_gui_selection,
+                                       get_string_for_gui_from_reduction_mode)
 canMantidPlot = True
 
 
@@ -264,11 +265,8 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
 
     def get_simple_line_edit_field(self, expected_type, line_edit):
         gui_element = getattr(self, line_edit)
-        value_as_string = gui_element.currentText()
-        if value_as_string:
-            return expected_type(value_as_string)
-        else:
-            return None
+        value_as_string = gui_element.text()
+        return expected_type(value_as_string) if value_as_string else None
 
     def update_simple_line_edit_field(self, line_edit, value):
         if value:
@@ -327,8 +325,8 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
     # ------------------------------------------------------------------------------------------------------------------
     @property
     def wavelength_step_type(self):
-        step_type_as_string = self.wavelength_step_type_combo_box.currentText()
-        return RangeStepType.to_string(step_type_as_string)
+        step_type_as_string = self.wavelength_step_type_combo_box.currentText().encode('utf-8')
+        return RangeStepType.from_string(step_type_as_string)
 
     @wavelength_step_type.setter
     def wavelength_step_type(self, value):
@@ -363,8 +361,12 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
     # ------------------------------------------------------------------------------------------------------------------
     @property
     def sample_shape(self):
-        geometry_as_string = self.geometry_combo_box.currentText()
-        return SampleShape.to_string(geometry_as_string)
+        geometry_as_string = self.geometry_combo_box.currentText().encode('utf-8')
+        # Either the selection is something that can be converted to a SampleShape or we need to read from file
+        try:
+            return SampleShape.from_string(geometry_as_string)
+        except RuntimeError:
+            return None
 
     @sample_shape.setter
     def sample_shape(self, value):
@@ -402,6 +404,14 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
     def sample_thickness(self, value):
         self.update_simple_line_edit_field(line_edit="thickness_line_edit", value=value)
 
+    @property
+    def z_offset(self):
+        return self.get_simple_line_edit_field(line_edit="z_offset_line_edit", expected_type=float)
+
+    @z_offset.setter
+    def z_offset(self, value):
+        self.update_simple_line_edit_field(line_edit="z_offset_line_edit", value=value)
+
     # -----------------------------------------------------------------
     # Save Options
     # -----------------------------------------------------------------
@@ -419,8 +429,16 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
         return checked_save_types
 
     @save_types.setter
-    def save_types(self, value):
-        pass
+    def save_types(self, values):
+        for value in values:
+            if value is SaveType.CanSAS:
+                self.can_sas_checkbox.setChecked(True)
+            elif value is SaveType.NXcanSAS:
+                self.nx_can_sas_checkbox.setChecked(True)
+            elif value is SaveType.RKH:
+                self.rkh_checkbox.setChecked(True)
+            elif value is SaveType.NistQxy:
+                self.nist_qxy_checkbox.setChecked(True)
 
     @property
     def zero_error_free(self):
@@ -479,6 +497,15 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
         self.height_line_edit.setValidator(positive_double_validator)
         self.width_line_edit.setValidator(positive_double_validator)
         self.thickness_line_edit.setValidator(positive_double_validator)
+        self.z_offset_line_edit.setValidator(double_validator)
+
+    @property
+    def compatibility_mode(self):
+        return self.compatibility_mode_check_box.isChecked()
+
+    @compatibility_mode.setter
+    def compatibility_mode(self, value):
+        self.compatibility_mode_check_box.setChecked(value)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Table interaction
