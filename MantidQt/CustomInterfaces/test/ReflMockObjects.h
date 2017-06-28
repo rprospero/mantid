@@ -62,6 +62,7 @@ public:
   MOCK_METHOD0(clearCommands, void());
   MOCK_METHOD2(setInstrumentList,
                void(const std::vector<std::string> &, const std::string &));
+  MOCK_METHOD2(setRowActionEnabled, void(int, bool));
 
   // Calls we don't care about
   void showSearch(ReflSearchModel_sptr) override{};
@@ -191,6 +192,7 @@ public:
 
 class MockSettingsPresenter : public IReflSettingsPresenter {
 public:
+  MOCK_CONST_METHOD1(getTransmissionRuns, std::string(bool));
   MOCK_CONST_METHOD0(getTransmissionOptions, std::string());
   MOCK_CONST_METHOD0(getReductionOptions, std::string());
   MOCK_CONST_METHOD0(getStitchOptions, std::string());
@@ -201,6 +203,7 @@ public:
 
 class MockSettingsTabPresenter : public IReflSettingsTabPresenter {
 public:
+  MOCK_CONST_METHOD2(getTransmissionRuns, std::string(int, bool));
   MOCK_CONST_METHOD1(getTransmissionOptions, std::string(int));
   MOCK_CONST_METHOD1(getReductionOptions, std::string(int));
   MOCK_CONST_METHOD1(getStitchOptions, std::string(int));
@@ -221,11 +224,13 @@ public:
 
 class MockMainWindowPresenter : public IReflMainWindowPresenter {
 public:
+  MOCK_CONST_METHOD1(getTransmissionRuns, std::string(int));
   MOCK_CONST_METHOD1(getTransmissionOptions, std::string(int));
   MOCK_CONST_METHOD1(getReductionOptions, std::string(int));
   MOCK_CONST_METHOD1(getStitchOptions, std::string(int));
   MOCK_CONST_METHOD1(setInstrumentName, void(const std::string &instName));
   MOCK_CONST_METHOD0(getInstrumentName, std::string());
+  MOCK_METHOD1(notify, void(Flag));
   MOCK_METHOD3(askUserString,
                std::string(const std::string &, const std::string &,
                            const std::string &));
@@ -244,6 +249,7 @@ public:
     UNUSED_ARG(group);
     return std::string();
   }
+  bool checkIfProcessing() const override { return false; }
 
   ~MockMainWindowPresenter() override{};
 };

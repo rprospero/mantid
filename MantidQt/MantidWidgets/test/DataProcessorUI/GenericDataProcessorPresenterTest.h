@@ -12,6 +12,7 @@
 #include "MantidQtMantidWidgets/DataProcessorUI/DataProcessorMockObjects.h"
 #include "MantidQtMantidWidgets/DataProcessorUI/GenericDataProcessorPresenter.h"
 #include "MantidQtMantidWidgets/DataProcessorUI/ProgressableViewMockObject.h"
+#include "MantidQtMantidWidgets/WidgetDllOption.h"
 #include "MantidTestHelpers/WorkspaceCreationHelper.h"
 
 using namespace MantidQt::MantidWidgets;
@@ -22,6 +23,69 @@ using namespace testing;
 //=====================================================================================
 // Functional tests
 //=====================================================================================
+
+// Use this mocked presenter for tests that will start the reducing row/group
+// workers/threads. This overrides the async methods to be non-async, allowing
+// them to be tested.
+class GenericDataProcessorPresenterNoThread
+    : public GenericDataProcessorPresenter {
+public:
+  // Standard constructor
+  GenericDataProcessorPresenterNoThread(
+      const DataProcessorWhiteList &whitelist,
+      const std::map<std::string, DataProcessorPreprocessingAlgorithm> &
+          preprocessMap,
+      const DataProcessorProcessingAlgorithm &processor,
+      const DataProcessorPostprocessingAlgorithm &postprocessor,
+      const std::map<std::string, std::string> &postprocessMap =
+          std::map<std::string, std::string>(),
+      const std::string &loader = "Load")
+      : GenericDataProcessorPresenter(whitelist, preprocessMap, processor,
+                                      postprocessor, postprocessMap, loader) {}
+
+  // Delegating constructor (no pre-processing required)
+  GenericDataProcessorPresenterNoThread(
+      const DataProcessorWhiteList &whitelist,
+      const DataProcessorProcessingAlgorithm &processor,
+      const DataProcessorPostprocessingAlgorithm &postprocessor)
+      : GenericDataProcessorPresenter(
+            whitelist,
+            std::map<std::string, DataProcessorPreprocessingAlgorithm>(),
+            processor, postprocessor) {}
+
+  // Destructor
+  ~GenericDataProcessorPresenterNoThread() override {}
+
+private:
+  // non-async row reduce
+  void startAsyncRowReduceThread(RowItem *rowItem, int groupIndex) override {
+    try {
+      reduceRow(&rowItem->second);
+      m_manager->update(groupIndex, rowItem->first, rowItem->second);
+    } catch (std::exception &ex) {
+      reductionError(ex);
+      threadFinished(1);
+    }
+    threadFinished(0);
+  }
+
+  // non-async group reduce
+  void startAsyncGroupReduceThread(GroupData &groupData) override {
+    try {
+      postProcessGroup(groupData);
+    } catch (std::exception &ex) {
+      reductionError(ex);
+      threadFinished(1);
+    }
+    threadFinished(0);
+  }
+
+  // Overriden non-async methods have same implementation as parent class
+  void process() override { GenericDataProcessorPresenter::process(); }
+  void plotRow() override { GenericDataProcessorPresenter::plotRow(); }
+  void plotGroup() override { GenericDataProcessorPresenter::process(); }
+};
+
 class GenericDataProcessorPresenterTest : public CxxTest::TestSuite {
 
 private:
@@ -1013,7 +1077,7 @@ public:
     NiceMock<MockDataProcessorView> mockDataProcessorView;
     NiceMock<MockProgressableView> mockProgress;
     NiceMock<MockMainPresenter> mockMainPresenter;
-    GenericDataProcessorPresenter presenter(
+    GenericDataProcessorPresenterNoThread presenter(
         createReflectometryWhiteList(), createReflectometryPreprocessMap(),
         createReflectometryProcessor(), createReflectometryPostprocessor());
     presenter.acceptViews(&mockDataProcessorView, &mockProgress);
@@ -1041,6 +1105,12 @@ public:
     EXPECT_CALL(mockDataProcessorView, getSelectedParents())
         .Times(1)
         .WillRepeatedly(Return(grouplist));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingValues())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::string>()));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingProperties())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::set<std::string>>()));
     EXPECT_CALL(mockMainPresenter, getPreprocessingOptions())
         .Times(2)
         .WillRepeatedly(Return(std::map<std::string, std::string>()));
@@ -1091,7 +1161,7 @@ public:
     NiceMock<MockDataProcessorView> mockDataProcessorView;
     NiceMock<MockProgressableView> mockProgress;
     NiceMock<MockMainPresenter> mockMainPresenter;
-    GenericDataProcessorPresenter presenter(
+    GenericDataProcessorPresenterNoThread presenter(
         createReflectometryWhiteList(), createReflectometryPreprocessMap(),
         createReflectometryProcessor(), createReflectometryPostprocessor());
     presenter.acceptViews(&mockDataProcessorView, &mockProgress);
@@ -1122,6 +1192,12 @@ public:
     EXPECT_CALL(mockDataProcessorView, getSelectedParents())
         .Times(1)
         .WillRepeatedly(Return(grouplist));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingValues())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::string>()));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingProperties())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::set<std::string>>()));
     EXPECT_CALL(mockMainPresenter, getPreprocessingOptions())
         .Times(2)
         .WillRepeatedly(Return(std::map<std::string, std::string>()));
@@ -1181,7 +1257,7 @@ public:
     NiceMock<MockDataProcessorView> mockDataProcessorView;
     NiceMock<MockProgressableView> mockProgress;
     NiceMock<MockMainPresenter> mockMainPresenter;
-    GenericDataProcessorPresenter presenter(
+    GenericDataProcessorPresenterNoThread presenter(
         createReflectometryWhiteList(), createReflectometryPreprocessMap(),
         createReflectometryProcessor(), createReflectometryPostprocessor());
     presenter.acceptViews(&mockDataProcessorView, &mockProgress);
@@ -1214,6 +1290,12 @@ public:
     EXPECT_CALL(mockDataProcessorView, getSelectedParents())
         .Times(1)
         .WillRepeatedly(Return(grouplist));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingValues())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::string>()));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingProperties())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::set<std::string>>()));
     EXPECT_CALL(mockMainPresenter, getPreprocessingOptions())
         .Times(2)
         .WillRepeatedly(Return(std::map<std::string, std::string>()));
@@ -1267,7 +1349,7 @@ public:
     NiceMock<MockDataProcessorView> mockDataProcessorView;
     NiceMock<MockProgressableView> mockProgress;
     NiceMock<MockMainPresenter> mockMainPresenter;
-    GenericDataProcessorPresenter presenter(
+    GenericDataProcessorPresenterNoThread presenter(
         createReflectometryWhiteList(), createReflectometryPreprocessMap(),
         createReflectometryProcessor(), createReflectometryPostprocessor());
     presenter.acceptViews(&mockDataProcessorView, &mockProgress);
@@ -1300,6 +1382,12 @@ public:
         .Times(1)
         .WillRepeatedly(Return(std::set<int>()));
     EXPECT_CALL(mockMainPresenter, askUserYesNo(_, _)).Times(0);
+    EXPECT_CALL(mockMainPresenter, getPreprocessingValues())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::string>()));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingProperties())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::set<std::string>>()));
     EXPECT_CALL(mockMainPresenter, getPreprocessingOptions())
         .Times(2)
         .WillRepeatedly(Return(std::map<std::string, std::string>()));
@@ -1351,7 +1439,7 @@ public:
     NiceMock<MockDataProcessorView> mockDataProcessorView;
     NiceMock<MockProgressableView> mockProgress;
     NiceMock<MockMainPresenter> mockMainPresenter;
-    GenericDataProcessorPresenter presenter(
+    GenericDataProcessorPresenterNoThread presenter(
         createReflectometryWhiteList(), createReflectometryPreprocessMap(),
         createReflectometryProcessor(), createReflectometryPostprocessor());
     presenter.acceptViews(&mockDataProcessorView, &mockProgress);
@@ -1379,6 +1467,12 @@ public:
     EXPECT_CALL(mockDataProcessorView, getSelectedParents())
         .Times(1)
         .WillRepeatedly(Return(grouplist));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingValues())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::string>()));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingProperties())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::set<std::string>>()));
     EXPECT_CALL(mockMainPresenter, getPreprocessingOptions())
         .Times(2)
         .WillRepeatedly(Return(std::map<std::string, std::string>()));
@@ -1469,7 +1563,7 @@ public:
     NiceMock<MockDataProcessorView> mockDataProcessorView;
     NiceMock<MockProgressableView> mockProgress;
     NiceMock<MockMainPresenter> mockMainPresenter;
-    GenericDataProcessorPresenter presenter(
+    GenericDataProcessorPresenterNoThread presenter(
         createReflectometryWhiteList(), createReflectometryPreprocessMap(),
         createReflectometryProcessor(), createReflectometryPostprocessor());
     presenter.acceptViews(&mockDataProcessorView, &mockProgress);
@@ -1518,6 +1612,12 @@ public:
     EXPECT_CALL(mockDataProcessorView, getSelectedParents())
         .Times(1)
         .WillRepeatedly(Return(grouplist));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingValues())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::string>()));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingProperties())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::set<std::string>>()));
     EXPECT_CALL(mockMainPresenter, getPreprocessingOptions())
         .Times(2)
         .WillRepeatedly(Return(std::map<std::string, std::string>()));
@@ -3144,9 +3244,9 @@ public:
     EXPECT_CALL(mockDataProcessorView, setTableList(_)).Times(0);
     EXPECT_CALL(mockDataProcessorView, setOptionsHintStrategy(_, _)).Times(0);
     // Constructor (no pre-processing)
-    GenericDataProcessorPresenter presenter(createReflectometryWhiteList(),
-                                            createReflectometryProcessor(),
-                                            createReflectometryPostprocessor());
+    GenericDataProcessorPresenterNoThread presenter(
+        createReflectometryWhiteList(), createReflectometryProcessor(),
+        createReflectometryPostprocessor());
     // Verify expectations
     TS_ASSERT(Mock::VerifyAndClearExpectations(&mockDataProcessorView));
 
@@ -3194,6 +3294,12 @@ public:
     EXPECT_CALL(mockDataProcessorView, getSelectedParents())
         .Times(1)
         .WillRepeatedly(Return(grouplist));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingValues())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::string>()));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingProperties())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::set<std::string>>()));
     EXPECT_CALL(mockMainPresenter, getPreprocessingOptions()).Times(0);
     EXPECT_CALL(mockMainPresenter, getProcessingOptions())
         .Times(2)
@@ -3361,7 +3467,7 @@ public:
     NiceMock<MockMainPresenter> mockMainPresenter;
 
     std::map<std::string, std::string> postprocesssMap = {{"dQ/Q", "Params"}};
-    GenericDataProcessorPresenter presenter(
+    GenericDataProcessorPresenterNoThread presenter(
         createReflectometryWhiteList(), createReflectometryPreprocessMap(),
         createReflectometryProcessor(), createReflectometryPostprocessor(),
         postprocesssMap);
@@ -3391,6 +3497,12 @@ public:
     EXPECT_CALL(mockDataProcessorView, getSelectedParents())
         .Times(1)
         .WillRepeatedly(Return(grouplist));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingValues())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::string>()));
+    EXPECT_CALL(mockMainPresenter, getPreprocessingProperties())
+        .Times(2)
+        .WillRepeatedly(Return(std::map<std::string, std::set<std::string>>()));
     EXPECT_CALL(mockMainPresenter, getPreprocessingOptions())
         .Times(2)
         .WillRepeatedly(Return(std::map<std::string, std::string>()));
@@ -3438,6 +3550,53 @@ public:
     AnalysisDataService::Instance().remove("IvsLam_TOF_12346");
     AnalysisDataService::Instance().remove("12346");
     AnalysisDataService::Instance().remove("IvsQ_TOF_12345_TOF_12346");
+
+    TS_ASSERT(Mock::VerifyAndClearExpectations(&mockDataProcessorView));
+    TS_ASSERT(Mock::VerifyAndClearExpectations(&mockMainPresenter));
+  }
+
+  void testPauseReduction() {
+    NiceMock<MockDataProcessorView> mockDataProcessorView;
+    NiceMock<MockProgressableView> mockProgress;
+    NiceMock<MockMainPresenter> mockMainPresenter;
+    GenericDataProcessorPresenter presenter(
+        createReflectometryWhiteList(), createReflectometryPreprocessMap(),
+        createReflectometryProcessor(), createReflectometryPostprocessor());
+    presenter.acceptViews(&mockDataProcessorView, &mockProgress);
+    presenter.accept(&mockMainPresenter);
+
+    // We should not receive any errors
+    EXPECT_CALL(mockMainPresenter, giveUserCritical(_, _)).Times(0);
+
+    // User hits the 'pause' button
+    EXPECT_CALL(mockDataProcessorView, pause()).Times(1);
+    EXPECT_CALL(mockMainPresenter, pause()).Times(1);
+
+    presenter.notify(DataProcessorPresenter::PauseFlag);
+
+    TS_ASSERT(Mock::VerifyAndClearExpectations(&mockDataProcessorView));
+    TS_ASSERT(Mock::VerifyAndClearExpectations(&mockMainPresenter));
+  }
+
+  void testResumeReduction() {
+    NiceMock<MockDataProcessorView> mockDataProcessorView;
+    NiceMock<MockProgressableView> mockProgress;
+    NiceMock<MockMainPresenter> mockMainPresenter;
+    GenericDataProcessorPresenter presenter(
+        createReflectometryWhiteList(), createReflectometryPreprocessMap(),
+        createReflectometryProcessor(), createReflectometryPostprocessor());
+    presenter.acceptViews(&mockDataProcessorView, &mockProgress);
+    presenter.accept(&mockMainPresenter);
+
+    // We should not receive any errors
+    EXPECT_CALL(mockMainPresenter, giveUserCritical(_, _)).Times(0);
+
+    // User hits the 'resume' button
+    EXPECT_CALL(mockDataProcessorView, resume()).Times(1);
+    EXPECT_CALL(mockMainPresenter, resume()).Times(1);
+
+    presenter.setNewSelectionState(false);
+    presenter.notify(DataProcessorPresenter::ProcessFlag);
 
     TS_ASSERT(Mock::VerifyAndClearExpectations(&mockDataProcessorView));
     TS_ASSERT(Mock::VerifyAndClearExpectations(&mockMainPresenter));
