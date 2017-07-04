@@ -8,15 +8,21 @@ import os
 import ui_sans_data_processor_window
 from PyQt4 import QtGui, QtCore
 from mantid.simpleapi import *
+from mantid.kernel import Logger
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from inspect import isclass
 from mantidqtpython import MantidQt
 from sans.common.enums import (ReductionDimensionality, OutputMode, SaveType, SANSInstrument, RebinType,
-                               RangeStepType, SampleShape)
+                               RangeStepType, SampleShape, ReductionMode)
 from sans.gui_logic.gui_common import (get_reduction_mode_from_gui_selection,
-                                       get_string_for_gui_from_reduction_mode)
+                                       get_string_for_gui_from_reduction_mode, OPTIONS_SEPARATOR)
 canMantidPlot = True
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Globals
+# ----------------------------------------------------------------------------------------------------------------------
+gui_logger = Logger("SANS GUI LOGGER")
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -68,12 +74,13 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
         self.setupUi(self)
 
         # Main presenter
+
         self._main_presenter = main_presenter
 
         # Algorithm configuration
         self._gui_algorithm_name = self._main_presenter.get_gui_algorithm_name()
         self._white_list_entries = self._main_presenter.get_white_list()
-        self._black_list_entries = self._main_presenter.get_black_list()
+        self._black_list = self._main_presenter.get_black_list()
 
         # Listeners allow us to to notify all presenters
         self._settings_listeners = []
@@ -82,9 +89,10 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
         self.__generic_settings = "Mantid/ISISSANS"
         self.__user_file_path_key = "user_file_path"
         self.__batch_file_path_key = "batch_file_path"
-
-        # Other widgets
-        self._settings_diagnostic_tab_widget = None
+        self.__pixel_adjustment_det_1_path_key = "pixel_adjustment_det_1_path"
+        self.__pixel_adjustment_det_2_path_key = "pixel_adjustment_det_2_path"
+        self.__wavelength_adjustment_det_1_path_key = "wavelength_adjustment_det_1_path"
+        self.__wavelength_adjustment_det_2_path_key = "wavelength_adjustment_det_2_path"
 
         # Instrument
         self._instrument = None
@@ -128,17 +136,36 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
         # Setup white list
         white_list = MantidQt.MantidWidgets.DataProcessorWhiteList()
         for entry in self._white_list_entries:
-            white_list.addElement(entry.column_name, entry.algorithm_property, entry.description,
-                                  entry.show_value, entry.prefix)
+            # If there is a column name specified, then it is a white list entry.
+            if entry.column_name:
+                white_list.addElement(entry.column_name, entry.algorithm_property, entry.description,
+                                      entry.show_value, entry.prefix)
+
+        # Setup the black list, ie the properties which should not appear in the Options column
 
         # Processing algorithm (mandatory)
-        alg = MantidQt.MantidWidgets.DataProcessorProcessingAlgorithm(self._gui_algorithm_name, 'unused_', '')
+        alg = MantidQt.MantidWidgets.DataProcessorProcessingAlgorithm(self._gui_algorithm_name, 'unused_',
+                                                                      self._black_list)
 
         # --------------------------------------------------------------------------------------------------------------
         # Main Tab
         # --------------------------------------------------------------------------------------------------------------
         self.data_processor_table = MantidQt.MantidWidgets.QDataProcessorWidget(white_list, alg, self)
         self._setup_main_tab()
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Settings tabs
+        # --------------------------------------------------------------------------------------------------------------
+        self.reset_all_fields_to_default()
+        self.pixel_adjustment_det_1_push_button.clicked.connect(self._on_load_pixel_adjustment_det_1)
+        self.pixel_adjustment_det_2_push_button.clicked.connect(self._on_load_pixel_adjustment_det_2)
+        self.wavelength_adjustment_det_1_push_button.clicked.connect(self._on_load_wavelength_adjustment_det_1)
+        self.wavelength_adjustment_det_2_push_button.clicked.connect(self._on_load_wavelength_adjustment_det_2)
+
+        # Set the merge settings
+        self.reduction_mode_combo_box.currentIndexChanged .connect(self._on_reduction_mode_selection_has_changed)
+        self._on_reduction_mode_selection_has_changed()  # Disable the merge settings initially
+
         return True
 
     def _setup_main_tab(self):
@@ -164,12 +191,6 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
         self.data_processor_table.processingFinished.connect(self._processing_finished)
         self.data_processor_widget_layout.addWidget(self.data_processor_table)
 
-        # --------------------------------------------------------------------------------------------------------------
-        # Setup separated out views
-        # --------------------------------------------------------------------------------------------------------------
-        #self._settings_diagnostic_tab_widget = SettingsDiagnosticTab()
-        #self.settings_diagnostic_tab_layout.addWidget(self._settings_diagnostic_tab_widget)
-
     def _processed_clicked(self):
         """
         Process runs
@@ -186,8 +207,11 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
         """
         Load the user file
         """
+        # Load the user file
         self._load_file(self.user_file_line_edit, "*.*", self.__generic_settings, self.__user_file_path_key,
                         self.get_user_file_path)
+
+        # Notify presenters
         self._call_settings_listeners(lambda listener: listener.on_user_file_load())
 
     def _on_batch_file_load(self):
@@ -221,6 +245,39 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
             settings.beginGroup(q_settings_group_key)
             settings.setValue(q_settings_key, new_path)
             settings.endGroup()
+
+    def _on_load_pixel_adjustment_det_1(self):
+        self._load_file(self.pixel_adjustment_det_1_line_edit, "*.*", self.__generic_settings,
+                        self.__pixel_adjustment_det_1_path_key,  self.get_pixel_adjustment_det_1)
+
+    def get_pixel_adjustment_det_1(self):
+        return str(self.pixel_adjustment_det_1_line_edit.text())
+
+    def _on_load_pixel_adjustment_det_2(self):
+        self._load_file(self.pixel_adjustment_det_2_line_edit, "*.*", self.__generic_settings,
+                        self.__pixel_adjustment_det_2_path_key,  self.get_pixel_adjustment_det_2)
+
+    def get_pixel_adjustment_det_2(self):
+        return str(self.pixel_adjustment_det_2_line_edit.text())
+
+    def _on_load_wavelength_adjustment_det_1(self):
+        self._load_file(self.wavelength_adjustment_det_1_line_edit, "*.*", self.__generic_settings,
+                        self.__wavelength_adjustment_det_1_path_key,  self.get_wavelength_adjustment_det_1)
+
+    def get_wavelength_adjustment_det_1(self):
+        return str(self.wavelength_adjustment_det_1_line_edit.text())
+
+    def _on_load_wavelength_adjustment_det_2(self):
+        self._load_file(self.wavelength_adjustment_det_2_line_edit, "*.*", self.__generic_settings,
+                        self.__wavelength_adjustment_det_2_path_key,  self.get_wavelength_adjustment_det_2)
+
+    def get_wavelength_adjustment_det_2(self):
+        return str(self.wavelength_adjustment_det_2_line_edit.text())
+
+    def _on_reduction_mode_selection_has_changed(self):
+        selection = self.reduction_mode_combo_box.currentText()
+        is_merged = selection == ReductionMode.to_string(ReductionMode.Merged)
+        self.merged_settings.setEnabled(is_merged)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Elements which can be set and read by the model
@@ -273,144 +330,17 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
             gui_element = getattr(self, line_edit)
             gui_element.setText(str(value))
 
-    # ------------------------------------------------------------------------------------------------------------------
-    # Event slices group
-    # ------------------------------------------------------------------------------------------------------------------
-    @property
-    def event_slices(self):
-        return str(self.slice_event_line_edit.text())
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    # START ACCESSORS
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-    @event_slices.setter
-    def event_slices(self, value):
-        self.slice_event_line_edit.setText(value)
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # General group
-    # ------------------------------------------------------------------------------------------------------------------
-    @property
-    def reduction_dimensionality(self):
-        return ReductionDimensionality.OneDim if self.reduction_dimensionality_1D.isChecked() \
-            else ReductionDimensionality.TwoDim
-
-    @reduction_dimensionality.setter
-    def reduction_dimensionality(self, value):
-        is_1d = value is ReductionDimensionality.OneDim
-        self.reduction_dimensionality_1D.setChecked(is_1d)
-        self.reduction_dimensionality_2D.setChecked(not is_1d)
-
-    @property
-    def reduction_mode(self):
-        reduction_mode_as_string = self.reduction_mode_combo_box.currentText()
-        return get_reduction_mode_from_gui_selection(reduction_mode_as_string)
-
-    @reduction_mode.setter
-    def reduction_mode(self, value):
-        # There are two types of values that can be passed:
-        # Lists: we set the combo box to the values in the list
-        # String: we look for string and we set it
-        if isinstance(value, list):
-            self.reduction_mode_combo_box.clear()
-            for element in value:
-                self.reduction_mode_combo_box.addItem(element)
-        else:
-            # Convert the value to the correct GUI string
-            reduction_mode_as_string = get_string_for_gui_from_reduction_mode(value, self._instrument)
-            if reduction_mode_as_string:
-                index = self.reduction_mode_combo_box.findText(reduction_mode_as_string)
-                if index != -1:
-                    self.reduction_mode_combo_box.setCurrentIndex(index)
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Wavelength Group
-    # ------------------------------------------------------------------------------------------------------------------
-    @property
-    def wavelength_step_type(self):
-        step_type_as_string = self.wavelength_step_type_combo_box.currentText().encode('utf-8')
-        return RangeStepType.from_string(step_type_as_string)
-
-    @wavelength_step_type.setter
-    def wavelength_step_type(self, value):
-        self.update_gui_combo_box(value=value, expected_type=RangeStepType, combo_box="wavelength_step_type_combo_box")
-
-    @property
-    def wavelength_min(self):
-        return self.get_simple_line_edit_field(line_edit="wavelength_min_line_edit", expected_type=float)
-
-    @wavelength_min.setter
-    def wavelength_min(self, value):
-        self.update_simple_line_edit_field(line_edit="wavelength_min_line_edit", value=value)
-
-    @property
-    def wavelength_max(self):
-        return self.get_simple_line_edit_field(line_edit="wavelength_max_line_edit", expected_type=float)
-
-    @wavelength_max.setter
-    def wavelength_max(self, value):
-        self.update_simple_line_edit_field(line_edit="wavelength_max_line_edit", value=value)
-
-    @property
-    def wavelength_step(self):
-        return self.get_simple_line_edit_field(line_edit="wavelength_max_line_edit", expected_type=float)
-
-    @wavelength_step.setter
-    def wavelength_step(self, value):
-        self.update_simple_line_edit_field(line_edit="wavelength_step_line_edit", value=value)
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Scale Group
-    # ------------------------------------------------------------------------------------------------------------------
-    @property
-    def sample_shape(self):
-        geometry_as_string = self.geometry_combo_box.currentText().encode('utf-8')
-        # Either the selection is something that can be converted to a SampleShape or we need to read from file
-        try:
-            return SampleShape.from_string(geometry_as_string)
-        except RuntimeError:
-            return None
-
-    @sample_shape.setter
-    def sample_shape(self, value):
-        self.update_gui_combo_box(value=value, expected_type=SampleShape, combo_box="geometry_combo_box")
-
-    @property
-    def absolute_scale(self):
-        return self.get_simple_line_edit_field(line_edit="absolute_scale_line_edit", expected_type=float)
-
-    @absolute_scale.setter
-    def absolute_scale(self, value):
-        self.update_simple_line_edit_field(line_edit="absolute_scale_line_edit", value=value)
-
-    @property
-    def sample_height(self):
-        return self.get_simple_line_edit_field(line_edit="height_line_edit", expected_type=float)
-
-    @sample_height.setter
-    def sample_height(self, value):
-        self.update_simple_line_edit_field(line_edit="height_line_edit", value=value)
-
-    @property
-    def sample_width(self):
-        return self.get_simple_line_edit_field(line_edit="width_line_edit", expected_type=float)
-
-    @sample_width.setter
-    def sample_width(self, value):
-        self.update_simple_line_edit_field(line_edit="width_line_edit", value=value)
-
-    @property
-    def sample_thickness(self):
-        return self.get_simple_line_edit_field(line_edit="thickness_line_edit", expected_type=float)
-
-    @sample_thickness.setter
-    def sample_thickness(self, value):
-        self.update_simple_line_edit_field(line_edit="thickness_line_edit", value=value)
-
-    @property
-    def z_offset(self):
-        return self.get_simple_line_edit_field(line_edit="z_offset_line_edit", expected_type=float)
-
-    @z_offset.setter
-    def z_offset(self, value):
-        self.update_simple_line_edit_field(line_edit="z_offset_line_edit", value=value)
+    # ==================================================================================================================
+    # ==================================================================================================================
+    # FRONT TAB
+    # ==================================================================================================================
+    # ==================================================================================================================
 
     # -----------------------------------------------------------------
     # Save Options
@@ -468,7 +398,7 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
         elif self.output_mode_both_radio_button.isChecked():
             return OutputMode.Both
         else:
-            logger.warning("The output format was not specified. Defaulting to saving to memory only.")
+            gui_logger.warning("The output format was not specified. Defaulting to saving to memory only.")
             return OutputMode.PublishToADS
 
     @output_mode.setter
@@ -480,11 +410,299 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
         elif value is OutputMode.Both:
             self.output_mode_both_radio_button.setCheck(True)
 
+    @property
+    def compatibility_mode(self):
+        return self.compatibility_mode_check_box.isChecked()
+
+    @compatibility_mode.setter
+    def compatibility_mode(self, value):
+        self.compatibility_mode_check_box.setChecked(value)
+
+    # ==================================================================================================================
+    # ==================================================================================================================
+    # General TAB
+    # ==================================================================================================================
+    # ==================================================================================================================
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # General group
+    # ------------------------------------------------------------------------------------------------------------------
+    @property
+    def reduction_dimensionality(self):
+        return ReductionDimensionality.OneDim if self.reduction_dimensionality_1D.isChecked() \
+            else ReductionDimensionality.TwoDim
+
+    @reduction_dimensionality.setter
+    def reduction_dimensionality(self, value):
+        is_1d = value is ReductionDimensionality.OneDim
+        self.reduction_dimensionality_1D.setChecked(is_1d)
+        self.reduction_dimensionality_2D.setChecked(not is_1d)
+
+    @property
+    def reduction_mode(self):
+        reduction_mode_as_string = self.reduction_mode_combo_box.currentText()
+        return get_reduction_mode_from_gui_selection(reduction_mode_as_string)
+
+    @reduction_mode.setter
+    def reduction_mode(self, value):
+        # There are two types of values that can be passed:
+        # Lists: we set the combo box to the values in the list
+        # String: we look for string and we set it
+        if isinstance(value, list):
+            self.reduction_mode_combo_box.clear()
+            for element in value:
+                self.reduction_mode_combo_box.addItem(element)
+        else:
+            # Convert the value to the correct GUI string
+            reduction_mode_as_string = get_string_for_gui_from_reduction_mode(value, self._instrument)
+            if reduction_mode_as_string:
+                index = self.reduction_mode_combo_box.findText(reduction_mode_as_string)
+                if index != -1:
+                    self.reduction_mode_combo_box.setCurrentIndex(index)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Event slices group
+    # ------------------------------------------------------------------------------------------------------------------
+    @property
+    def event_slices(self):
+        return str(self.slice_event_line_edit.text())
+
+    @event_slices.setter
+    def event_slices(self, value):
+        self.slice_event_line_edit.setText(value)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Wavelength Group
+    # ------------------------------------------------------------------------------------------------------------------
+    @property
+    def wavelength_step_type(self):
+        step_type_as_string = self.wavelength_step_type_combo_box.currentText().encode('utf-8')
+        return RangeStepType.from_string(step_type_as_string)
+
+    @wavelength_step_type.setter
+    def wavelength_step_type(self, value):
+        self.update_gui_combo_box(value=value, expected_type=RangeStepType, combo_box="wavelength_step_type_combo_box")
+
+    @property
+    def wavelength_min(self):
+        return self.get_simple_line_edit_field(line_edit="wavelength_min_line_edit", expected_type=float)
+
+    @wavelength_min.setter
+    def wavelength_min(self, value):
+        self.update_simple_line_edit_field(line_edit="wavelength_min_line_edit", value=value)
+
+    @property
+    def wavelength_max(self):
+        return self.get_simple_line_edit_field(line_edit="wavelength_max_line_edit", expected_type=float)
+
+    @wavelength_max.setter
+    def wavelength_max(self, value):
+        self.update_simple_line_edit_field(line_edit="wavelength_max_line_edit", value=value)
+
+    @property
+    def wavelength_step(self):
+        return self.get_simple_line_edit_field(line_edit="wavelength_step_line_edit", expected_type=float)
+
+    @wavelength_step.setter
+    def wavelength_step(self, value):
+        self.update_simple_line_edit_field(line_edit="wavelength_step_line_edit", value=value)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Scale Group
+    # ------------------------------------------------------------------------------------------------------------------
+    @property
+    def sample_shape(self):
+        geometry_as_string = self.geometry_combo_box.currentText().encode('utf-8')
+        # Either the selection is something that can be converted to a SampleShape or we need to read from file
+        try:
+            return SampleShape.from_string(geometry_as_string)
+        except RuntimeError:
+            return None
+
+    @sample_shape.setter
+    def sample_shape(self, value):
+        if value is None:
+            # Set to the default
+            self.geometry_combo_box.setCurrentIndex(0)
+        else:
+            self.update_gui_combo_box(value=value, expected_type=SampleShape, combo_box="geometry_combo_box")
+
+    @property
+    def absolute_scale(self):
+        return self.get_simple_line_edit_field(line_edit="absolute_scale_line_edit", expected_type=float)
+
+    @absolute_scale.setter
+    def absolute_scale(self, value):
+        self.update_simple_line_edit_field(line_edit="absolute_scale_line_edit", value=value)
+
+    @property
+    def sample_height(self):
+        return self.get_simple_line_edit_field(line_edit="height_line_edit", expected_type=float)
+
+    @sample_height.setter
+    def sample_height(self, value):
+        self.update_simple_line_edit_field(line_edit="height_line_edit", value=value)
+
+    @property
+    def sample_width(self):
+        return self.get_simple_line_edit_field(line_edit="width_line_edit", expected_type=float)
+
+    @sample_width.setter
+    def sample_width(self, value):
+        self.update_simple_line_edit_field(line_edit="width_line_edit", value=value)
+
+    @property
+    def sample_thickness(self):
+        return self.get_simple_line_edit_field(line_edit="thickness_line_edit", expected_type=float)
+
+    @sample_thickness.setter
+    def sample_thickness(self, value):
+        self.update_simple_line_edit_field(line_edit="thickness_line_edit", value=value)
+
+    @property
+    def z_offset(self):
+        return self.get_simple_line_edit_field(line_edit="z_offset_line_edit", expected_type=float)
+
+    @z_offset.setter
+    def z_offset(self, value):
+        self.update_simple_line_edit_field(line_edit="z_offset_line_edit", value=value)
+
+    # ==================================================================================================================
+    # ==================================================================================================================
+    # ADJUSTMENT TAB
+    # ==================================================================================================================
+    # ==================================================================================================================
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Monitor normalization
+    # ------------------------------------------------------------------------------------------------------------------
+    @property
+    def normalization_incident_monitor(self):
+        return self.get_simple_line_edit_field(line_edit="monitor_normalization_line_edit", expected_type=int)
+
+    @normalization_incident_monitor.setter
+    def normalization_incident_monitor(self, value):
+        self.update_simple_line_edit_field(line_edit="monitor_normalization_line_edit", value=value)
+
+    @property
+    def normalization_interpolate(self):
+        return self.monitor_normalization_interpolating_rebin_check_box.isChecked()
+
+    @normalization_interpolate.setter
+    def normalization_interpolate(self, value):
+        self.monitor_normalization_interpolating_rebin_check_box.setChecked(value)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Transmission
+    # ------------------------------------------------------------------------------------------------------------------
+    @property
+    def normalization_incident_monitor(self):
+        return self.get_simple_line_edit_field(line_edit="transmission_line_edit", expected_type=int)
+
+    @normalization_incident_monitor.setter
+    def normalization_incident_monitor(self, value):
+        self.update_simple_line_edit_field(line_edit="transmission_line_edit", value=value)
+
+    @property
+    def transmission_interpolate(self):
+        return self.transmission_interpolating_rebin_check_box.isChecked()
+
+    @transmission_interpolate.setter
+    def transmission_interpolate(self, value):
+        self.transmission_interpolating_rebin_check_box.setChecked(value)
+
+    @property
+    def transmission_roi_files(self):
+        return self.get_simple_line_edit_field(line_edit="transmission_roi_files_line_edit", expected_type=str)
+
+    @transmission_roi_files.setter
+    def transmission_roi_files(self, value):
+        self.update_simple_line_edit_field(line_edit="transmission_roi_files_line_edit", value=value)
+
+    @property
+    def transmission_mask_files(self):
+        return self.get_simple_line_edit_field(line_edit="transmission_mask_files_line_edit", expected_type=str)
+
+    @transmission_mask_files.setter
+    def transmission_mask_files(self, value):
+        self.update_simple_line_edit_field(line_edit="transmission_mask_files_line_edit", value=value)
+
+    @property
+    def transmission_radius(self):
+        return self.get_simple_line_edit_field(line_edit="transmission_radius_line_edit", expected_type=float)
+
+    @transmission_radius.setter
+    def transmission_radius(self, value):
+        self.update_simple_line_edit_field(line_edit="transmission_radius_line_edit", value=value)
+
+    @property
+    def transmission_monitor(self):
+        return 3 if self.transmission_m3_radio_button.isChecked() else 4
+
+    @transmission_monitor.setter
+    def transmission_monitor(self, value):
+        if value == 3:
+            self.transmission_m3_radio_button.setChecked(True)
+        else:
+            self.transmission_m4_radio_button.setChecked(True)
+
+    @property
+    def transmission_m4_shift(self):
+        return self.get_simple_line_edit_field(line_edit="transmission_m4_shift_line_edit", expected_type=float)
+
+    @transmission_m4_shift.setter
+    def transmission_m4_shift(self, value):
+        self.update_simple_line_edit_field(line_edit="transmission_m4_shift_line_edit", value=value)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Wavelength- and pixel-adjustment files
+    # ------------------------------------------------------------------------------------------------------------------
+    @property
+    def pixel_adjustment_det_1(self):
+        return self.get_simple_line_edit_field(line_edit="pixel_adjustment_det_1_line_edit", expected_type=str)
+
+    @pixel_adjustment_det_1.setter
+    def pixel_adjustment_det_1(self, value):
+        self.update_simple_line_edit_field(line_edit="pixel_adjustment_det_1_line_edit", value=value)
+
+    @property
+    def pixel_adjustment_det_2(self):
+        return self.get_simple_line_edit_field(line_edit="pixel_adjustment_det_2_line_edit", expected_type=str)
+
+    @pixel_adjustment_det_2.setter
+    def pixel_adjustment_det_2(self, value):
+        self.update_simple_line_edit_field(line_edit="pixel_adjustment_det_2_line_edit", value=value)
+
+    @property
+    def wavelength_adjustment_det_1(self):
+        return self.get_simple_line_edit_field(line_edit="wavelength_adjustment_det_1_line_edit", expected_type=str)
+
+    @wavelength_adjustment_det_1.setter
+    def wavelength_adjustment_det_1(self, value):
+        self.update_simple_line_edit_field(line_edit="wavelength_adjustment_det_1_line_edit", value=value)
+
+    @property
+    def wavelength_adjustment_det_2(self):
+        return self.get_simple_line_edit_field(line_edit="wavelength_adjustment_det_2_line_edit", expected_type=str)
+
+    @wavelength_adjustment_det_2.setter
+    def wavelength_adjustment_det_2(self, value):
+        self.update_simple_line_edit_field(line_edit="wavelength_adjustment_det_2_line_edit", value=value)
+
+
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    # END ACCESSORS
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
     def _attach_validators(self):
         # Setup the list of validators
         double_validator = QtGui.QDoubleValidator()
         positive_double_validator = QtGui.QDoubleValidator()
         positive_double_validator.setBottom(0.0)
+        positive_integer_validator = QtGui.QIntValidator()
+        positive_integer_validator.setBottom(1)
 
         # -------------------------------
         # General tab
@@ -499,13 +717,63 @@ class SANSDataProcessorGui(QtGui.QMainWindow, ui_sans_data_processor_window.Ui_S
         self.thickness_line_edit.setValidator(positive_double_validator)
         self.z_offset_line_edit.setValidator(double_validator)
 
-    @property
-    def compatibility_mode(self):
-        return self.compatibility_mode_check_box.isChecked()
+        # --------------------------------
+        # Adjustment tab
+        # --------------------------------
+        self.monitor_normalization_line_edit.setValidator(positive_integer_validator)
+        self.transmission_line_edit.setValidator(positive_integer_validator)
+        self.transmission_radius_line_edit.setValidator(positive_double_validator)
+        self.transmission_m4_shift_line_edit.setValidator(double_validator)
 
-    @compatibility_mode.setter
-    def compatibility_mode(self, value):
-        self.compatibility_mode_check_box.setChecked(value)
+    def reset_all_fields_to_default(self):
+        # ------------------------------
+        # General tab
+        # ------------------------------
+        self.reduction_dimensionality_1D.setChecked(True)
+        self.reduction_mode_combo_box.setCurrentIndex(0)
+
+        self.merged_q_range_start_line_edit.setText("")
+        self.merged_q_range_stop_line_edit.setText("")
+        self.merged_scale_line_edit.setText("")
+        self.merged_shift_line_edit.setText("")
+        self.merged_shift_use_fit_check_box.setChecked(False)
+        self.merged_scale_use_fit_check_box.setChecked(False)
+        self.merged_use_q_range_check_box.setChecked(False)
+
+        self.slice_event_line_edit.setText("")
+
+        self.wavelength_min_line_edit.setText("")
+        self.wavelength_max_line_edit.setText("")
+        self.wavelength_step_line_edit.setText("")
+        self.wavelength_step_type_combo_box.setCurrentIndex(0)
+
+        self.absolute_scale_line_edit.setText("")
+        self.geometry_combo_box.setCurrentIndex(0)
+        self.height_line_edit.setText("")
+        self.width_line_edit.setText("")
+        self.thickness_line_edit.setText("")
+        self.z_offset_line_edit.setText("")
+
+        # --------------------------------
+        # Adjustment tab
+        # --------------------------------
+        self.monitor_normalization_line_edit.setText("")
+        self.monitor_normalization_interpolating_rebin_check_box.setChecked(False)
+
+        self.transmission_line_edit.setText("")
+        self.transmission_interpolating_rebin_check_box.setChecked(False)
+        self.transmission_target_combo_box.setCurrentIndex(0)
+        self.transmission_m3_radio_button.setChecked(True)
+        self.transmission_m4_shift_line_edit.setText("")
+        self.transmission_radius_line_edit.setText("")
+        self.transmission_roi_files_line_edit.setText("")
+        self.transmission_mask_files_line_edit.setText("")
+
+        self.pixel_adjustment_det_1_line_edit.setText("")
+        self.pixel_adjustment_det_2_line_edit.setText("")
+
+        self.wavelength_adjustment_det_1_line_edit.setText("")
+        self.wavelength_adjustment_det_2_line_edit.setText("")
 
     # ------------------------------------------------------------------------------------------------------------------
     # Table interaction

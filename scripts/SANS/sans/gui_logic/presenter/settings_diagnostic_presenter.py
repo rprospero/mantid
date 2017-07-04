@@ -1,5 +1,6 @@
 from ui.sans_isis.settings_diagnostic_tab import SettingsDiagnosticTab
 
+from mantid.kernel import logger
 
 class SettingsDiagnosticPresenter(object):
     class ConcreteSettingsDiagnosticTabListener(SettingsDiagnosticTab.SettingsDiagnosticTabListener):
@@ -25,6 +26,9 @@ class SettingsDiagnosticPresenter(object):
             self.display_state_diagnostic_tree(state)
 
     def on_update_rows(self):
+        """
+        Update the row selection in the combobox
+        """
         current_row_index = self._view.get_current_row()
         valid_row_indices = self._parent_presenter.get_row_indices()
 
@@ -37,10 +41,10 @@ class SettingsDiagnosticPresenter(object):
         self._view.update_rows(valid_row_indices)
 
         if new_row_index != -1:
-            pass
+            self.set_row(new_row_index)
 
     def set_row(self, index):
-        pass
+        self._view.set_row(index)
 
     def set_view(self, view):
         if view:

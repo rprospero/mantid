@@ -16,58 +16,117 @@ SANS_DUMMY_OUTPUT_ALGORITHM_PROPERTY_NAME = '__sans_dummy_gui_workspace'
 # Set up the white list and black list properties of the data algorithm
 # ----------------------------------------------------------------------------------------------------------------------
 algorithm_list_entry = namedtuple('algorithm_list_entry', 'column_name, algorithm_property, description, '
-                                                          'show_value, default, prefix')
+                                                          'show_value, default, prefix, property_type')
 
 
-def get_white_list_entries():
-    white_list_properties = [algorithm_list_entry(column_name="SampleScatter",
-                                                  algorithm_property="SampleScatter",
-                                                  description='The run number of the scatter sample',
-                                                  show_value=False,
-                                                  default='',
-                                                  prefix=''),
-                             algorithm_list_entry(column_name="SampleTransmission",
-                                                  algorithm_property="SampleTransmission",
-                                                  description='The run number of the transmission sample',
-                                                  show_value=False,
-                                                  default='',
-                                                  prefix=''),
-                             algorithm_list_entry(column_name="SampleDirect",
-                                                  algorithm_property="SampleDirect",
-                                                  description='The run number of the direct sample',
-                                                  show_value=False,
-                                                  default='',
-                                                  prefix=''),
-                             algorithm_list_entry(column_name="CanScatter",
-                                                  algorithm_property="CanScatter",
-                                                  description='The run number of the scatter can',
-                                                  show_value=False,
-                                                  default='',
-                                                  prefix=''),
-                             algorithm_list_entry(column_name="CanTransmission",
-                                                  algorithm_property="CanTransmission",
-                                                  description='The run number of the transmission can',
-                                                  show_value=False,
-                                                  default='',
-                                                  prefix=''),
-                             algorithm_list_entry(column_name="CanDirect",
-                                                  algorithm_property="CanDirect",
-                                                  description='The run number of the direct can',
-                                                  show_value=False,
-                                                  default='',
-                                                  prefix='')]
-    return white_list_properties
+def create_option_column_properties():
+    """
+    Adds a new property which is meant for the Options column.
+
+    This column should correspond to features in our settings section. We need to parse the entries before the
+    runs are processed in order to account for the settings in the Options column in the state creation.
+
+    Important note: If you add it here then you have to add it to the parsing logic, else nothing will happen with it.
+                    The important bit to edit is in gui_state_director. There the set properties are parsed.
+    """
+    props = [algorithm_list_entry(column_name="",
+                                  algorithm_property="WavelengthMin",
+                                  description='The min value of the wavelength when converting from TOF.',
+                                  show_value=True,
+                                  default='',
+                                  prefix='',
+                                  property_type=float),
+             algorithm_list_entry(column_name="",
+                                  algorithm_property="WavelengthMax",
+                                  description='The max value of the wavelength when converting from TOF.',
+                                  show_value=True,
+                                  default='',
+                                  prefix='',
+                                  property_type=float),
+             ]
+    return props
 
 
-def get_black_list_entries():
-    # black_list_properties = [algorithm_list_entry(column_name="",
-    #                                               algorithm_property="UseOptimizations",
-    #                                               description='If optimzations should be used.',
-    #                                               show_value=False,
-    #                                               default=1,
-    #                                               prefix='')
-    #                         ]
-    return []
+def create_properties():
+    properties = [algorithm_list_entry(column_name="SampleScatter",
+                                       algorithm_property="SampleScatter",
+                                       description='The run number of the scatter sample',
+                                       show_value=False,
+                                       default='',
+                                       prefix='',
+                                       property_type=str),
+                  algorithm_list_entry(column_name="SampleTransmission",
+                                       algorithm_property="SampleTransmission",
+                                       description='The run number of the transmission sample',
+                                       show_value=False,
+                                       default='',
+                                       prefix='',
+                                       property_type=str),
+                  algorithm_list_entry(column_name="SampleDirect",
+                                       algorithm_property="SampleDirect",
+                                       description='The run number of the direct sample',
+                                       show_value=False,
+                                       default='',
+                                       prefix='',
+                                       property_type=str),
+                  algorithm_list_entry(column_name="CanScatter",
+                                       algorithm_property="CanScatter",
+                                       description='The run number of the scatter can',
+                                       show_value=False,
+                                       default='',
+                                       prefix='',
+                                       property_type=str),
+                  algorithm_list_entry(column_name="CanTransmission",
+                                       algorithm_property="CanTransmission",
+                                       description='The run number of the transmission can',
+                                       show_value=False,
+                                       default='',
+                                       prefix='',
+                                       property_type=str),
+                  algorithm_list_entry(column_name="CanDirect",
+                                       algorithm_property="CanDirect",
+                                       description='The run number of the direct can',
+                                       show_value=False,
+                                       default='',
+                                       prefix='',
+                                       property_type=str),
+                  algorithm_list_entry(column_name="",
+                                       algorithm_property="UseOptimizations",
+                                       description='If optimizations should be used.',
+                                       show_value=False,
+                                       default=False,
+                                       prefix='',
+                                       property_type=bool),
+                  algorithm_list_entry(column_name="",
+                                       algorithm_property="RowIndex",
+                                       description='The row index (which is automatically populated by the GUI)',
+                                       show_value=False,
+                                       default=Property.EMPTY_INT,
+                                       prefix='',
+                                       property_type=int),
+                  algorithm_list_entry(column_name="",
+                                       algorithm_property="OutputMode",
+                                       description='The output mode.',
+                                       show_value=False,
+                                       default=OutputMode.to_string(OutputMode.PublishToADS),
+                                       prefix='',
+                                       property_type=bool)
+                  ]
+    return properties
+
+
+def get_white_list():
+    return create_properties()
+
+
+def get_black_list():
+    black_list = "InputWorkspace,OutputWorkspace,"
+    properties = create_properties()
+    for prop in properties:
+        if not prop.show_value:
+            black_list += prop.algorithm_property
+            black_list += ","
+    return black_list
 
 
 def get_gui_algorithm_name(facility):
@@ -99,29 +158,20 @@ class SANSGuiDataProcessorAlgorithm(DataProcessorAlgorithm):
                              doc='The output workspace (which is not used)')
 
         # ------------------------------------------------------------
-        # White list properties. They will be visible in the table
+        # Create the properties
         # ------------------------------------------------------------
-        white_list_entries = get_white_list_entries()
-        for entry in white_list_entries:
-            self.declareProperty(entry.algorithm_property, entry.default,
-                                 direction=Direction.Input, doc=entry.description)
+        properties = create_properties()
+        for prop in properties:
+            self.declareProperty(prop.algorithm_property, defaultValue=prop.default,
+                                 direction=Direction.Input, doc=prop.description)
 
         # ------------------------------------------------------------
-        # Black list properties. They will not be visible in the table
+        # Add properties which will show up in the options column
         # ------------------------------------------------------------
-        black_list_entries = get_black_list_entries()
-        for entry in black_list_entries:
-            self.declareProperty(entry.algorithm_property, entry.default, option=PropertyMode.Optional,
-                                 direction=Direction.Input, doc=entry.description)
-
-        # ------------------------------------------------------------
-        # Index of the row
-        # ------------------------------------------------------------
-        self.declareProperty("RowIndex", Property.EMPTY_INT, direction=Direction.Input,
-                             doc='The row index (which is automatically populated by the GUI)')
-        self.declareProperty('UseOptimizations', defaultValue=False, direction=Direction.Input, doc='Use optimizations')
-        self.declareProperty('OutputMode', defaultValue=OutputMode.to_string(OutputMode.PublishToADS),
-                             direction=Direction.Input, doc='Use optimizations')
+        properties = create_option_column_properties()
+        for prop in properties:
+            self.declareProperty(prop.algorithm_property, defaultValue=prop.default,
+                                 direction=Direction.Input, doc=prop.description)
 
     def PyExec(self):
         # 1. Get the index of the batch reduction

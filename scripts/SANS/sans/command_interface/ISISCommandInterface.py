@@ -380,8 +380,10 @@ def SetMonitorSpectrum(specNum, interp=False):
                    default no interpolation
     """
     specNum = int(specNum)
-    monitor_spectrum_command = NParameterCommand(command_id=NParameterCommandId.monitor_spectrum, values=[specNum,
-                                                                                                          interp])
+    is_trans = False
+    monitor_spectrum_command = NParameterCommand(command_id=NParameterCommandId.incident_spectrum, values=[specNum,
+                                                                                                           interp,
+                                                                                                           is_trans])
     director.add_command(monitor_spectrum_command)
 
 
@@ -394,8 +396,9 @@ def SetTransSpectrum(specNum, interp=False):
                    default no interpolation
     """
     specNum = int(specNum)
-    transmission_spectrum_command = NParameterCommand(command_id=NParameterCommandId.transmission_spectrum,
-                                                      values=[specNum, interp])
+    is_trans = True
+    transmission_spectrum_command = NParameterCommand(command_id=NParameterCommandId.incident_spectrum,
+                                                      values=[specNum, interp, is_trans])
     director.add_command(transmission_spectrum_command)
 
 

@@ -25,13 +25,39 @@ class GuiStateDirector(object):
 
         data = data_builder.build()
 
-        # 2. Create the rest of the state based on the builder.
+        # 2. Add elements from the options column
+        state_gui_model = copy.deepcopy(self._state_gui_model)
+        options_column_model = table_index_model.options_column_model
+        self._apply_column_options_to_state(options_column_model, state_gui_model)
+
+        # 3. Create the rest of the state based on the builder.
         user_file_state_director = UserFileStateDirectorISIS(data)
-        settings = copy.deepcopy(self._state_gui_model.settings)
+        settings = copy.deepcopy(state_gui_model.settings)
         user_file_state_director.add_state_settings(settings)
+
         return user_file_state_director.construct()
 
     @staticmethod
     def _set_data_entry(func, entry):
         if entry:
             func(entry)
+
+    @staticmethod
+    def _apply_column_options_to_state(options_column_model, state_gui_model):
+        """
+        Apply the column setting of the user to the state for that particular row.
+
+        Note if you are extending the options functionality, then you will have to add the property here.
+        :param options_column_model: the option column model with the row specific settings
+        :param state_gui_model: the state gui model
+        """
+        options = options_column_model.get_options()
+
+        # Here we apply the correction to the state depending on the settings in the options. This is not very nice,
+        # but currently it is not clear how to solve this differently.
+        if "WavelengthMin" in options.keys():
+            state_gui_model.wavelength_min = options["WavelengthMin"]
+
+        if "WavelengthMax" in options.keys():
+            state_gui_model.wavelength_max = options["WavelengthMax"]
+

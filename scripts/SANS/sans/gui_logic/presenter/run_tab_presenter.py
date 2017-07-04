@@ -13,7 +13,8 @@ from sans.gui_logic.presenter.gui_state_director import (GuiStateDirector)
 from sans.gui_logic.presenter.settings_diagnostic_presenter import (SettingsDiagnosticPresenter)
 from sans.gui_logic.sans_data_processor_gui_algorithm import SANS_DUMMY_INPUT_ALGORITHM_PROPERTY_NAME
 from sans.gui_logic.presenter.property_manager_service import PropertyManagerService
-from sans.gui_logic.gui_common import (get_reduction_mode_strings_for_gui, get_reduction_mode_strings_for_gui)
+from sans.gui_logic.gui_common import (get_reduction_mode_strings_for_gui, get_reduction_mode_strings_for_gui,
+                                       OPTIONS_SEPARATOR, OPTIONS_INDEX, OPTIONS_EQUAL)
 
 from sans.common.enums import (BatchReductionEntry, OutputMode, SANSInstrument, RebinType, RangeStepType, SampleShape)
 from sans.common.file_information import (find_sans_file, SANSFileInformationFactory)
@@ -25,10 +26,6 @@ sans_logger = Logger("SANS")
 
 
 class RunTabPresenter(object):
-    OPTIONS_INDEX = 6
-    OPTIONS_SEPARATOR = ","
-    OPTIONS_EQUAL = "="
-
     class ConcreteRunTabListener(SANSDataProcessorGui.RunTabListener):
         def __init__(self, presenter):
             super(RunTabPresenter.ConcreteRunTabListener, self).__init__()
@@ -97,7 +94,9 @@ class RunTabPresenter(object):
     # ------------------------------------------------------------------------------------------------------------------
     def set_view(self, view):
         if view is not None:
+            pass
             self._view = view
+
             # Add a listener to the view
             listener = RunTabPresenter.ConcreteRunTabListener(self)
             self._view.add_listener(listener)
@@ -125,12 +124,16 @@ class RunTabPresenter(object):
                 raise RuntimeError("The user path {} does not exist. Make sure a valid user file path"
                                    " has been specified.".format(user_file_path))
 
+            # Clear out the current view
+            self._view.reset_all_fields_to_default()
+
             # 3. Read and parse the user file
             user_file_reader = UserFileReader(user_file_path)
             user_file_items = user_file_reader.read_user_file()
 
             # 4. Populate the model
             self._state_model = StateGuiModel(user_file_items)
+
             # 5. Update the views.
             self._update_view_from_state_model()
         except Exception as e:
@@ -206,22 +209,22 @@ class RunTabPresenter(object):
         Returns:
 
         """
-        entry = property_name + self.OPTIONS_EQUAL + str(property_value)
+        entry = property_name + OPTIONS_EQUAL + str(property_value)
         options = self._get_options(row)
         if options:
-            options += self.OPTIONS_SEPARATOR + entry
+            options += OPTIONS_SEPARATOR + entry
         else:
             options = entry
         self._set_options(options, row)
 
     def _set_options(self, value, row):
-        self._view.set_cell(value, row, self.OPTIONS_INDEX)
+        self._view.set_cell(value, row, OPTIONS_INDEX)
 
     def _get_options(self, row):
-        return self._view.get_cell(row, self.OPTIONS_INDEX)
+        return self._view.get_cell(row, OPTIONS_INDEX, convert_to=str)
 
     def is_empty_row(self, row):
-        indices = range(self.OPTIONS_INDEX + 1)
+        indices = range(OPTIONS_INDEX + 1)
         for index in indices:
             cell_value = self._view.get_cell(row, index, convert_to=str)
             if cell_value:
@@ -320,9 +323,10 @@ class RunTabPresenter(object):
         """
         Goes through all sub presenters and update the views based on the state model
         """
-        # Run tab view
+        # Front tab view
         self._set_on_view("zero_error_free")
         self._set_on_view("save_types")
+        self._set_on_view("compatibility_mode")
 
         # Settings tab view
         self._set_on_view("reduction_dimensionality")
@@ -341,7 +345,22 @@ class RunTabPresenter(object):
         self._set_on_view("sample_thickness")
         self._set_on_view("z_offset")
 
-        self._set_on_view("compatibility_mode")
+        # Adjustment tab
+        self._set_on_view("normalization_incident_monitor")
+        self._set_on_view("normalization_interpolate")
+
+        self._set_on_view("transmission_incident_monitor")
+        self._set_on_view("transmission_interpolate")
+        self._set_on_view("transmission_roi_files")
+        self._set_on_view("transmission_mask_files")
+        self._set_on_view("transmission_radius")
+        self._set_on_view("transmission_monitor")
+        self._set_on_view("transmission_m4_shift")
+
+        self._set_on_view("pixel_adjustment_det_1")
+        self._set_on_view("pixel_adjustment_det_2")
+        self._set_on_view("wavelength_adjustment_det_1")
+        self._set_on_view("wavelength_adjustment_det_2")
 
     def _set_on_view(self, attribute_name):
         attribute = getattr(self._state_model, attribute_name)
@@ -360,6 +379,7 @@ class RunTabPresenter(object):
         # Run tab view
         self._set_on_state_model("zero_error_free", state_model)
         self._set_on_state_model("save_types", state_model)
+        self._set_on_state_model("compatibility_mode", state_model)
 
         # Settings tab
         self._set_on_state_model("reduction_dimensionality", state_model)
@@ -378,7 +398,22 @@ class RunTabPresenter(object):
         self._set_on_state_model("sample_thickness", state_model)
         self._set_on_state_model("z_offset", state_model)
 
-        self._set_on_state_model("compatibility_mode", state_model)
+        # Adjustment tab
+        self._set_on_state_model("normalization_incident_monitor", state_model)
+        self._set_on_state_model("normalization_interpolate", state_model)
+
+        self._set_on_state_model("transmission_incident_monitor", state_model)
+        self._set_on_state_model("transmission_interpolate", state_model)
+        self._set_on_state_model("transmission_roi_files", state_model)
+        self._set_on_state_model("transmission_mask_files", state_model)
+        self._set_on_state_model("transmission_radius", state_model)
+        self._set_on_state_model("transmission_monitor", state_model)
+        self._set_on_state_model("transmission_m4_shift", state_model)
+
+        self._set_on_state_model("pixel_adjustment_det_1", state_model)
+        self._set_on_state_model("pixel_adjustment_det_2", state_model)
+        self._set_on_state_model("wavelength_adjustment_det_1", state_model)
+        self._set_on_state_model("wavelength_adjustment_det_2", state_model)
 
         return state_model
 
@@ -405,8 +440,13 @@ class RunTabPresenter(object):
             can_scatter = self._view.get_cell(row=row, column=3, convert_to=str)
             can_transmission = self._view.get_cell(row=row, column=4, convert_to=str)
             can_direct = self._view.get_cell(row=row, column=5, convert_to=str)
+
+            # Get the options string
+            options_string = self._get_options(row)
+
             table_index_model = TableIndexModel(row, sample_scatter, sample_transmission, sample_direct,
-                                                can_scatter, can_transmission, can_direct)
+                                                can_scatter, can_transmission, can_direct,
+                                                options_column_string=options_string)
             table_model.add_table_entry(row, table_index_model)
         return table_model
 

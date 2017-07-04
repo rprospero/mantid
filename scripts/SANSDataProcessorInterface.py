@@ -26,5 +26,4 @@ main_presenter.set_view(ui)
 
 # Show
 if ui.setup_layout():
-    pass
     ui.show()

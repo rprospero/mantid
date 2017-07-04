@@ -1,7 +1,16 @@
 from sans.common.enums import SANSInstrument, ISISReductionMode
+from collections import namedtuple
 
 # ----------------------------------------------------------------------------------------------------------------------
-#  Globals
+# Option column globals
+# ----------------------------------------------------------------------------------------------------------------------
+OPTIONS_INDEX = 6
+OPTIONS_SEPARATOR = ","
+OPTIONS_EQUAL = "="
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+#  Other Globals
 # ----------------------------------------------------------------------------------------------------------------------
 SANS2D_LAB = "rear"
 SANS2D_HAB = "front"
@@ -15,9 +24,6 @@ DEFAULT_LAB = ISISReductionMode.to_string(ISISReductionMode.LAB)
 DEFAULT_HAB = ISISReductionMode.to_string(ISISReductionMode.HAB)
 MERGED = "Merged"
 ALL = "All"
-
-
-READ_FROM_FILE = "Read from file"
 
 
 def get_reduction_mode_strings_for_gui(instrument=None):
@@ -68,4 +74,5 @@ def get_reduction_mode_from_gui_selection(gui_selection):
         return ISISReductionMode.HAB
     else:
         raise RuntimeError("Reduction mode selection is not valid.")
+
 

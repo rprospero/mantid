@@ -1,6 +1,6 @@
 from mantidqtpython import MantidQt
-from sans.gui_logic.sans_data_processor_gui_algorithm import (get_gui_algorithm_name, get_white_list_entries,
-                                                              get_black_list_entries)
+from sans.gui_logic.sans_data_processor_gui_algorithm import (get_gui_algorithm_name, get_white_list,
+                                                              get_black_list)
 from sans.gui_logic.presenter.run_tab_presenter import RunTabPresenter
 
 
@@ -53,7 +53,7 @@ class MainPresenter(MantidQt.MantidWidgets.DataProcessorMainPresenter):
 
     def get_white_list(self):
         if self._white_list is None:
-            self._white_list = get_white_list_entries()
+            self._white_list = get_white_list()
         return self._white_list
 
     def get_number_of_white_list_items(self):
@@ -61,7 +61,7 @@ class MainPresenter(MantidQt.MantidWidgets.DataProcessorMainPresenter):
 
     def get_black_list(self):
         if self._black_list is None:
-            self._black_list = get_black_list_entries()
+            self._black_list = get_black_list()
         return self._black_list
 
     # ------------------------------------------------------------------------------------------------------------------

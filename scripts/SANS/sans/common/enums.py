@@ -120,6 +120,7 @@ class CanonicalCoordinates(Coordinates):
 # --------------------------
 #  ReductionMode
 # --------------------------
+@string_convertible
 @serializable_enum("Merged", "All")
 class ReductionMode(object):
     """
