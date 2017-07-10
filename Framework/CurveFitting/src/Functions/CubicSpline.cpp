@@ -75,12 +75,7 @@ void CubicSpline::setupInput(boost::scoped_array<double> &x,
   bool xSortFlag = false;
 
   for (int i = 0; i < n; ++i) {
-    std::string num = std::to_string(i);
-
-    std::string xName = "x" + num;
-    std::string yName = "y" + num;
-
-    x[i] = getAttribute(xName).asDouble();
+    x[i] = getAttribute("x" + std::to_string(i)).asDouble();
     y[i] = getParameter(i);
 
     if (!xSortFlag) {

@@ -14,8 +14,6 @@ namespace Mantid {
 namespace CurveFitting {
 namespace Functions {
 
-using namespace Mantid::CurveFitting::Functions;
-
 /**
 
 A wrapper around GSL functions implementing cubic spline interpolation.

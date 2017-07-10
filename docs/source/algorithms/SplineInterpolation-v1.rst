@@ -26,7 +26,7 @@ they will all be interpolated against the first spectra in
 WorkspaceToMatch.
 
 The algorithm can perform a linear interpolation, if the
-WorkspaceToMatch contains two points exactly.
+*WorkspaceToInterpolate* contains two points exactly.
 
 Optionally, this algorithm can also calculate the first and second
 derivatives of each of the interpolated points as a side product.

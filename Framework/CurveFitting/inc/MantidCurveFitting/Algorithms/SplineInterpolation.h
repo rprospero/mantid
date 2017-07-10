@@ -18,7 +18,7 @@ using namespace Mantid::CurveFitting::Functions;
   Produces an output workspace containing the interpolated points
 
   Optionally, the algorithm can perform a linear interpolation, if the
-  WorkspaceToMatch contains two points exactly.
+  WorkspaceToInterpolate contains two points exactly.
 
   Optionally the algorithm will also produce a grouped workspace of derivatives
   of up to order 2
