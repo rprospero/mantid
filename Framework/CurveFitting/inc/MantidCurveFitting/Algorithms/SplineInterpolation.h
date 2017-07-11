@@ -60,15 +60,14 @@ public:
   const std::string category() const override;
   /// Summary of algorithm's purpose. @see Algorithm::summary
   const std::string summary() const override {
-    return "Interpolates a set of spectra onto a spline defined by a second "
-           "input workspace. Optionally, this algorithm can also calculate "
-           "derivatives of order 1 or 2 as a side product or performs a "
+    return "Interpolates a set of spectra onto a cubic spline defined by a "
+           "second input workspace. Optionally, calculates "
+           "derivatives of order 1 or 2 as a side product. Can perform "
            "linear interpolation if the WorkspaceToInterpolate has only two "
-           "points. If X-values are not strictly ascending, then the X-, Y-, "
-           "and E- values of the workspaces will be sorted accordingly. "
-           "Some workspace properties like the instrument (not its size or "
-           "vertical axis description) will be copied from the "
-           "ReferenceWorkspace.";
+           "points. X-axes should be sorted ascending. "
+           "If the input workspaces are histograms they will be converted to "
+           "point data. Outside the interpolation range it will perform flat "
+           "extrapolation. ";
   }
   /// Cross-check properties with each other @see IAlgorithm::validateInputs
   std::map<std::string, std::string> validateInputs() override;
@@ -77,37 +76,32 @@ private:
   void init() override;
   void exec() override;
 
-  boost::shared_ptr<BackgroundFunction> m_cspline;
+  std::unique_ptr<BackgroundFunction> m_cspline;
 
-  /// convert a binned workspace to point data. Uses mean of the bins as point
-  MatrixWorkspace_sptr convertBinnedData(MatrixWorkspace_sptr workspace) const;
+  /// setup an output workspace using meta data from inws and taking a number of
+  /// spectra
+  API::MatrixWorkspace_sptr
+      setupOutputWorkspace(API::MatrixWorkspace_sptr,
+                           API::MatrixWorkspace_sptr) const;
 
-  /// set the points that define the linear bspline used for interpolation of a
-  /// workspace
-  void setInterpolationPointsLinear(MatrixWorkspace_const_sptr inputWorkspace,
-                                    const int row) const;
+  /// convert a binned workspace to point data using ConvertToPointData
+  MatrixWorkspace_sptr convertBinnedData(MatrixWorkspace_sptr);
 
   /// set the points that define the spline used for interpolation of a
   /// workspace
-  void setInterpolationPoints(MatrixWorkspace_const_sptr inputWorkspace,
-                              const int row) const;
+  void setInterpolationPoints(MatrixWorkspace_const_sptr, const int) const;
 
   /// Calculate the interpolation of the input workspace against the spline and
   /// store it in outputWorkspace
-  void calculateSpline(MatrixWorkspace_const_sptr inputWorkspace,
-                       MatrixWorkspace_sptr outputWorkspace, int row) const;
+  void calculateSpline(MatrixWorkspace_const_sptr, MatrixWorkspace_sptr,
+                       const int) const;
 
   /// Calculate the derivatives of the input workspace from the spline.
-  void calculateDerivatives(MatrixWorkspace_const_sptr inputWorkspace,
-                            MatrixWorkspace_sptr outputWorkspace,
-                            int order) const;
+  void calculateDerivatives(MatrixWorkspace_const_sptr, MatrixWorkspace_sptr,
+                            const int) const;
 
   /// Check if an x value falls within the range of the spline
-  void setXRange(MatrixWorkspace_sptr inputWorkspace,
-                 MatrixWorkspace_const_sptr interpolationWorkspace) const;
-
-  /// Check increasing x-values and sort x, y, e-values if needed
-  MatrixWorkspace_sptr ensureXIncreasing(MatrixWorkspace_sptr inputWorkspace);
+  void extrapolateFlat(MatrixWorkspace_sptr, MatrixWorkspace_const_sptr) const;
 };
 
 } // namespace Algorithms
