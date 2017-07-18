@@ -114,8 +114,16 @@ void EQSANSDarkCurrentSubtraction2::exec() {
     } else {
       // Get load algorithm as a string so that we can create a completely
       // new proxy and ensure that we don't overwrite existing properties
-      IAlgorithm_sptr loadAlg0 = reductionManager->getProperty("LoadAlgorithm");
-      const std::string loadString = loadAlg0->toString();
+      std::string loadString;
+      try {
+        IAlgorithm_sptr loadAlg0 =
+            reductionManager->getProperty("LoadAlgorithm");
+        loadString = loadAlg0->toString();
+      } catch (const std::runtime_error &) {
+        std::string loadAlg0 = reductionManager->getProperty("LoadAlgorithm");
+        loadString = loadAlg0;
+      }
+      g_log.error() << loadString << std::endl;
       loadAlg = Algorithm::fromString(loadString);
       loadAlg->setChild(true);
       loadAlg->setProperty("Filename", fileName);

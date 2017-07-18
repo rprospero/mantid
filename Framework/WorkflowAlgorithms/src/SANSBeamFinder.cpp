@@ -83,9 +83,15 @@ SANSBeamFinder::loadBeamFinderFile(const std::string &beamCenterFile) {
     } else {
       // Get load algorithm as a string so that we can create a completely
       // new proxy and ensure that we don't overwrite existing properties
-      IAlgorithm_sptr loadAlg0 =
-          m_reductionManager->getProperty("LoadAlgorithm");
-      const std::string loadString = loadAlg0->toString();
+      std::string loadString;
+      try {
+        IAlgorithm_sptr loadAlg0 =
+            m_reductionManager->getProperty("LoadAlgorithm");
+        loadString = loadAlg0->toString();
+      } catch (const std::runtime_error &) {
+        std::string loadAlg0 = m_reductionManager->getProperty("LoadAlgorithm");
+        loadString = loadAlg0;
+      }
       IAlgorithm_sptr loadAlg = Algorithm::fromString(loadString);
 
       loadAlg->setProperty("Filename", beamCenterFile);
