@@ -195,11 +195,12 @@ void LoadILLSANS::initWorkSpace(NeXus::NXEntry &firstEntry,
 
   loadMetaData(firstEntry, instrumentPath);
 
-  std::vector<double> binningRear, binningRight, binningLeft, binningDown,
-      binningUp;
+  std::vector<double> binningMonitors, binningRear, binningRight, binningLeft,
+      binningDown, binningUp;
 
   if (firstEntry.getFloat("mode") == 0.0) { // Not TOF
     g_log.debug("Getting default wavelength bins...");
+    binningMonitors = m_defaultBinning;
     binningRear = m_defaultBinning;
     binningRight = m_defaultBinning;
     binningLeft = m_defaultBinning;
@@ -210,6 +211,10 @@ void LoadILLSANS::initWorkSpace(NeXus::NXEntry &firstEntry,
     g_log.debug("Getting wavelength bins from the nexus file...");
     std::string binPathPrefix(instrumentPath + "/tof/tof_wavelength_detector");
 
+    // TODO: Need to investigate how to get real ToF axis for the monitor in
+    // this case, but this might work...
+    binningMonitors =
+        m_loader.getTimeBinningFromNexusPath(firstEntry, binPathPrefix + "1");
     binningRear =
         m_loader.getTimeBinningFromNexusPath(firstEntry, binPathPrefix + "1");
     binningRight =
@@ -222,7 +227,8 @@ void LoadILLSANS::initWorkSpace(NeXus::NXEntry &firstEntry,
         m_loader.getTimeBinningFromNexusPath(firstEntry, binPathPrefix + "5");
   }
   g_log.debug("Loading the data into the workspace...");
-  size_t nextIndex = loadDataIntoWorkspaceFromMonitors(firstEntry, 0);
+  size_t nextIndex =
+      loadDataIntoWorkspaceFromMonitors(firstEntry, binningMonitors, 0);
   nextIndex = loadDataIntoWorkspaceFromHorizontalTubes(dataRear, binningRear,
                                                        nextIndex);
   nextIndex = loadDataIntoWorkspaceFromVerticalTubes(dataRight, binningRight,
@@ -235,9 +241,9 @@ void LoadILLSANS::initWorkSpace(NeXus::NXEntry &firstEntry,
       loadDataIntoWorkspaceFromHorizontalTubes(dataUp, binningUp, nextIndex);
 }
 
-size_t
-LoadILLSANS::loadDataIntoWorkspaceFromMonitors(NeXus::NXEntry &firstEntry,
-                                               size_t firstIndex) {
+size_t LoadILLSANS::loadDataIntoWorkspaceFromMonitors(
+    NeXus::NXEntry &firstEntry, const std::vector<double> &timeBinning,
+    size_t firstIndex) {
 
   // let's find the monitors
   // For D33 should be monitor1 and monitor2
@@ -255,11 +261,10 @@ LoadILLSANS::loadDataIntoWorkspaceFromMonitors(NeXus::NXEntry &firstEntry,
       std::vector<double> positionsBinning;
       positionsBinning.reserve(vectorSize);
 
-      const HistogramData::BinEdges histoBinEdges(
-          vectorSize, HistogramData::LinearGenerator(0.0, 1.0));
+      const HistogramData::BinEdges binEdges(timeBinning);
       const HistogramData::Counts histoCounts(data(), data() + data.dim2());
 
-      m_localWorkspace->setHistogram(firstIndex, std::move(histoBinEdges),
+      m_localWorkspace->setHistogram(firstIndex, std::move(binEdges),
                                      std::move(histoCounts));
 
       // Add average monitor counts to a property:
