@@ -43,14 +43,24 @@ path = "/users/bush/mantid_data/D33_Comparison_TOF_mono/Data/rawdata/"
 
 beam_x, beam_y, message = SANSBeamFinder(path + "002192.nxs", ReductionProperties="reduction_manager")
 print(beam_x, beam_y, message)
-print reduction_manager.getPropertyValue("LoadAlgorithm")
+
 dark_current_subtracted_ws, dark_current_ws, dark_current_message = EQSANSDarkCurrentSubtraction(sample_ws, path + "002227.nxs",  ReductionProperties="reduction_manager")
+
 #EQSANSNormalise - this attempts to do something with beam current
-SANSMask(Workspace=dark_current_subtracted_ws, MaskedDetectorList=maskedDetectors)
+
+#SANSMask(Workspace=dark_current_subtracted_ws, MaskedDetectorList=maskedDetectors)
+
 solid_angle_corrected_ws, solid_angle_message = SANSSolidAngleCorrection(InputWorkspace = dark_current_subtracted_ws, ReductionProperties="reduction_manager")
+
 sensitivity_corrected_ws, sensitivity_ws, sensitivity_message = SANSSensitivityCorrection(InputWorkspace= solid_angle_corrected_ws, Filename=path + "002229.nxs", ReductionProperties="reduction_manager")
-#direct_beam_corrected_ws, transmission_ws, raw_transmission_ws, direct_beam_message = EQSANSDirectBeamTransmission(InputWorkspace=sensitivity_corrected_ws, SampleDataFilename=path + '002197.nxs', EmptyDataFilename=path + '002192.nxs', ReductionProperties='reduction_manager')
-scaled_ws, scaled_message = SANSAbsoluteScale(InputWorkspace=sensitivity_corrected_ws, ReductionProperties='reduction_manager')
+
+direct_beam_corrected_ws, transmission_ws, raw_transmission_ws, direct_beam_message = EQSANSDirectBeamTransmission(InputWorkspace=sensitivity_corrected_ws, SampleDataFilename=path + '002197.nxs', BeamCenterX=127.45253531279961, BeamCenterY=62.634854735217914, BeamRadius=2, EmptyDataFilename=path + '002192.nxs', ReductionProperties='reduction_manager')
+print(direct_beam_message)
+
+scaled_ws, scaled_message = SANSAbsoluteScale(InputWorkspace=direct_beam_corrected_ws, ReductionProperties='reduction_manager')
+
 normalised_ws, normalised_message = NormaliseByThickness(InputWorkspace=scaled_ws, SampleThickness=0.1)
+
 reducded_ws, reducded_message = EQSANSAzimuthalAverage1D(InputWorkspace=normalised_ws, ReductionProperties='reduction_manager')
+
 #EQSANS2D
