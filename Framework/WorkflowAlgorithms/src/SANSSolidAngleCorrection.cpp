@@ -9,6 +9,7 @@
 #include "MantidDataObjects/EventList.h"
 #include "MantidKernel/CompositeValidator.h"
 #include "MantidKernel/PropertyManager.h"
+#include "MantidGeometry/Instrument.h"
 
 namespace Mantid {
 namespace WorkflowAlgorithms {
@@ -100,6 +101,10 @@ void SANSSolidAngleCorrection::exec() {
   // Number of X bins
   const int xLength = static_cast<int>(inputWS->y(0).size());
 
+  const auto &backDet =
+      inputWS->getInstrument()->getComponentByName("back_detector");
+  const auto zBaseDistance = backDet->getPos().Z();
+
   const auto &spectrumInfo = inputWS->spectrumInfo();
   PARALLEL_FOR_IF(Kernel::threadSafe(*outputWS, *inputWS))
   for (int i = 0; i < numHists; ++i) {
@@ -140,6 +145,9 @@ void SANSSolidAngleCorrection::exec() {
     } else {
       corr = theta_term * theta_term * theta_term;
     }
+
+    const auto zDet = spectrumInfo.position(i).Z();
+    corr = corr * (zDet * zDet) / (zBaseDistance * zBaseDistance);
 
     // Correct data for all X bins
     for (int j = 0; j < xLength; j++) {
