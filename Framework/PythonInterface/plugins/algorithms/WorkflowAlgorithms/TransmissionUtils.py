@@ -155,6 +155,8 @@ def load_monitors(self, property_manager):
     det_list = [str(i) for i in det_list]
     det_list = ','.join(det_list)
 
+    print(det_list)
+
     # Ensuring that the binning is uniform
     spec0 = empty_ws.dataX(0)
     spec_last = empty_ws.dataX(empty_ws.getNumberHistograms()-1)
@@ -224,6 +226,12 @@ def calculate_transmission(self, sample_mon_ws, empty_mon_ws, first_det,
         @param monitor_det_ID: ID of the monitor spectrum (for HFIR data only)
     """
     try:
+        print(empty_mon_ws.name(), empty_mon_ws.getNumberHistograms(), empty_mon_ws.extractY())
+        print(sample_mon_ws.name(), sample_mon_ws.getNumberHistograms(), sample_mon_ws.extractY())
+        import numpy as np
+        print("Transmission:", np.sum(sample_mon_ws.extractY())/np.sum(empty_mon_ws.extractY()))
+        print(np.sort(sample_mon_ws.extractY(), axis=0), np.sort(empty_mon_ws.extractY(), axis=0))
+
         if monitor_det_ID is not None:
             alg = _execute("CalculateTransmission",
                            {"DirectRunWorkspace": empty_mon_ws,
