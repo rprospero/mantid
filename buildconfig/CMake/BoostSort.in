@@ -1,8 +1,8 @@
 cmake_minimum_required ( VERSION 3.5 )
 include( ExternalProject )
-ExternalProject_Add(eigen
+ExternalProject_Add(boost-sort
   URL               "https://github.com/boostorg/sort/archive/boost-1.64.0.tar.gz"
-  URL_HASH          "MD5= 274167d6600e87be352e03bb07126ae7"
+  URL_HASH          "MD5=274167d6600e87be352e03bb07126ae7"
   SOURCE_DIR        "${CMAKE_BINARY_DIR}/boost-sort-src"
   CONFIGURE_COMMAND ""
   BUILD_COMMAND     ""
