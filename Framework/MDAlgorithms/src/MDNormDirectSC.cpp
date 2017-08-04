@@ -26,13 +26,26 @@ using namespace Mantid::API;
 using namespace Mantid::Kernel;
 
 namespace {
-// function to  compare two intersections (h,k,l,Momentum) by Momentum
-bool compareMomentum(const std::array<double, 4> &v1,
-                     const std::array<double, 4> &v2) {
-  return (v1[3] < v2[3]);
-}
-}
+//[float_functor_rightshift
+// Casting to an integer before bitshifting
+struct rightshift {
+  int64_t operator()(const std::array<double, 4> &x,
+                     const uint64_t offset) const {
+    return boost::sort::spreadsort::float_mem_cast<double, boost::int64_t>(
+               x[3]) >>
+           offset;
+  }
+};
+//] [/float_functor_rightshift]
 
+//[float_functor_lessthan
+struct lessthan {
+  bool operator()(const std::array<double, 4> &x,
+                  const std::array<double, 4> &y) const {
+    return x[3] < y[3];
+  }
+};
+}
 // Register the algorithm into the AlgorithmFactory
 DECLARE_ALGORITHM(MDNormDirectSC)
 
@@ -754,7 +767,8 @@ void MDNormDirectSC::calculateIntersections(
   }
 
   // sort intersections by final momentum
-  std::stable_sort(intersections.begin(), intersections.end(), compareMomentum);
+  boost::sort::spreadsort::float_sort(
+      intersections.begin(), intersections.end(), rightshift(), lessthan());
 }
 
 } // namespace MDAlgorithms

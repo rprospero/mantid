@@ -18,6 +18,7 @@
 
 #include "boost/sort/sort.hpp"
 
+namespace {
 //[float_functor_rightshift
 // Casting to an integer before bitshifting
 struct rightshift {
@@ -37,7 +38,7 @@ struct lessthan {
     return x[3] < y[3];
   }
 };
-
+} // namespace
 namespace Mantid {
 namespace MDAlgorithms {
 
