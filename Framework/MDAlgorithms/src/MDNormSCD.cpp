@@ -48,11 +48,6 @@ using namespace Mantid::DataObjects;
 using namespace Mantid::API;
 using namespace Mantid::Kernel;
 
-namespace {
-// function to  compare two intersections (h,k,l,Momentum) by Momentum
-double compareMomentum(const std::array<double, 4> &v1) { return v1[3]; }
-}
-
 // Register the algorithm into the AlgorithmFactory
 DECLARE_ALGORITHM(MDNormSCD)
 

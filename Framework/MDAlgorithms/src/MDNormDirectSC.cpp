@@ -16,6 +16,8 @@
 #include "MantidKernel/TimeSeriesProperty.h"
 #include "MantidKernel/VectorHelper.h"
 
+#include "boost/sort/sort.hpp"
+
 namespace Mantid {
 namespace MDAlgorithms {
 
