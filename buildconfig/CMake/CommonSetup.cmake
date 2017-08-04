@@ -46,6 +46,11 @@ add_definitions ( -DBOOST_ALL_DYN_LINK -DBOOST_ALL_NO_LIB )
 # Need this defined globally for our log time values
 add_definitions ( -DBOOST_DATE_TIME_POSIX_TIME_STD_CONFIG )
 
+###########################################################################
+# Add Boost Sort as an external project
+###########################################################################
+include ( BoostSort )
+
 find_package ( Poco 1.4.6 REQUIRED )
 include_directories( SYSTEM ${POCO_INCLUDE_DIRS} )
 
