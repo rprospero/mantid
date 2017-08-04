@@ -11,7 +11,7 @@ if ( Boost_VERSION VERSION_LESS 1.58 )
   execute_process(COMMAND ${CMAKE_COMMAND} . WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/boost-sort-download )
   execute_process(COMMAND ${CMAKE_COMMAND} --build . WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/boost-sort-download )
 
-  set(BOOST_SORT_INCLUDE_DIR "${CMAKE_BINARY_DIR}/boost-sort-src" CACHE PATH "Boost Sort include directory")
+  set(BOOST_SORT_INCLUDE_DIR "${CMAKE_BINARY_DIR}/boost-sort-src/include" CACHE PATH "Boost Sort include directory" FORCE)
   ## Include the source directory.
 else ()
   set(BOOST_SORT_INCLUDE_DIR "${Boost_INCLUDE_DIRS}" CACHE PATH "Boost Sort include directory")
