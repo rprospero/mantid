@@ -6,6 +6,7 @@
 #include "MantidAPI/RegisterFileLoader.h"
 #include "MantidAPI/WorkspaceFactory.h"
 #include "MantidGeometry/Instrument.h"
+#include "MantidKernel/OptionalBool.h"
 #include "MantidKernel/UnitFactory.h"
 
 #include <boost/algorithm/string.hpp>
@@ -40,7 +41,7 @@ const std::string LoadILLIndirect2::name() const { return "LoadILLIndirect"; }
 
 /// Algorithm's category for identification. @see Algorithm::category
 const std::string LoadILLIndirect2::category() const {
-  return "DataHandling\\Nexus";
+  return "DataHandling\\Nexus;ILL\\Indirect";
 }
 
 //----------------------------------------------------------------------------------------------
