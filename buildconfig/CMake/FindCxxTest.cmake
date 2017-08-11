@@ -100,13 +100,17 @@ include ( PrecompiledHeaderCommands )
 # CXXTEST_ADD_TEST (public macro to add unit tests)
 #=============================================================
 macro(CXXTEST_ADD_TEST _cxxtest_testname)
+    # Assume all files are relative to the caller's source dir
+    set ( _test_dir ${CMAKE_CURRENT_SOURCE_DIR} )
     # determine the cpp filename
     set(_cxxtest_real_outfname ${CMAKE_CURRENT_BINARY_DIR}/${_cxxtest_testname}_runner.cpp)
     add_custom_command(
         OUTPUT  ${_cxxtest_real_outfname}
         DEPENDS ${PATH_FILES}
         COMMAND ${PYTHON_EXECUTABLE} ${CXXTEST_TESTGEN_EXECUTABLE} --root
-        --xunit-printer --world ${_cxxtest_testname} -o ${_cxxtest_real_outfname}
+        --xunit-printer --world ${_cxxtest_testname}
+        --include ${_test_dir}/${CXXTEST_EXTRA_HEADER_INCLUDE}
+        -o ${_cxxtest_real_outfname}
     )
     set_source_files_properties(${_cxxtest_real_outfname} PROPERTIES GENERATED true)
 
@@ -132,7 +136,6 @@ macro(CXXTEST_ADD_TEST _cxxtest_testname)
       set (_cxxtest_h_files ${part} ${_cxxtest_h_files})
     endforeach (part ${ARGN})
     
-    set ( _test_dir ${CMAKE_CURRENT_SOURCE_DIR} )
     if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${_test_dir}/PrecompiledHeader.h )
       ADD_PRECOMPILED_HEADER( ${_test_dir}/PrecompiledHeader.h ${CMAKE_CURRENT_SOURCE_DIR}/${_test_dir} ${CMAKE_CURRENT_SOURCE_DIR}/${_test_dir}/PrecompiledHeader.cpp _cxxtest_cpp_files _cxxtest_h_files)
     ENDIF ()     
