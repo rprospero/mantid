@@ -39,14 +39,19 @@ public:
   MplFigureCanvas(int subplotLayout = 111, QWidget *parent = 0);
   ~MplFigureCanvas();
 
-  // Query
+  ///@{
+  ///@name Query properties
   SubPlotSpec getGeometry() const;
+  size_t nlines() const;
+  ///@}
 
-  void draw();
+  ///@{
+  ///@name Modify the canvas
   void addSubPlot(int subplotLayout);
-
   template <typename XArrayType, typename YArrayType>
-  void plot(const XArrayType &x, const YArrayType &y, const char *format);
+  void plotLine(const XArrayType &x, const YArrayType &y, const char *format);
+  void removeLine(const size_t index);
+  ///@}
 
 private:
   // Python objects are held in an hidden type to avoid Python

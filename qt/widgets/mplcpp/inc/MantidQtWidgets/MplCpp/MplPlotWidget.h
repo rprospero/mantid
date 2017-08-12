@@ -18,18 +18,11 @@ namespace MplCpp {
 class EXPORT_OPT_MANTIDQT_MPLCPP MplPlotWidget : public QWidget {
   Q_OBJECT
 public:
-  MplPlotWidget(int subplotLayout, QWidget *parent = nullptr);
+  MplPlotWidget(int subplotLayout = 111, QWidget *parent = nullptr);
 
-  inline void draw() { m_canvas->draw(); }
-  inline void addSubPlot(int subplotLayout) {
-    m_canvas->addSubPlot(subplotLayout);
-  }
-
-  template <typename XArrayType, typename YArrayType>
-  inline void plot(XArrayType &&x, YArrayType &&y, const char *format) {
-    m_canvas->plot(std::forward<XArrayType>(x), std::forward<YArrayType>(y),
-                   format);
-  }
+  /// Access the canvas object
+  /// @return A reference to the embedded canvas
+  inline MplFigureCanvas &canvas() const { return *m_canvas; }
 
 private:
   MplFigureCanvas *m_canvas;

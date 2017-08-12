@@ -82,6 +82,7 @@ struct MplFigureCanvas::PyObjectHolder {
   }
 
   PythonObject canvas;
+  std::vector<PythonObject> lines;
 };
 
 //------------------------------------------------------------------------------
@@ -111,7 +112,7 @@ MplFigureCanvas::~MplFigureCanvas() { delete m_pydata; }
 
 /**
  * Retrieve information about the subplot geometry
- * @return
+ * @return A SubPlotSpec object defining the geometry
  */
 SubPlotSpec MplFigureCanvas::getGeometry() const {
   auto axes = m_pydata->gca();
@@ -123,12 +124,13 @@ SubPlotSpec MplFigureCanvas::getGeometry() const {
 }
 
 /**
- * Call FigureCanvas.draw method on base class
+ * @return The number of Line2Ds on the canvas
  */
-void MplFigureCanvas::draw() {
-  PythonObject(
-      NewRef(PyObject_CallMethod(m_pydata->canvas.get(), PYSTR_LITERAL("draw"),
-                                 PYSTR_LITERAL(""), nullptr)));
+size_t MplFigureCanvas::nlines() const {
+  auto axes = m_pydata->gca();
+  auto lines = PythonObject(NewRef(PyObject_CallMethod(
+      axes.get(), PYSTR_LITERAL("get_lines"), PYSTR_LITERAL(""), nullptr)));
+  return static_cast<size_t>(PyList_Size(lines.get()));
 }
 
 /**
@@ -147,26 +149,48 @@ void MplFigureCanvas::addSubPlot(int subplotLayout) {
 }
 
 /**
- * Plot lines or markers to the axes
+ * Remove a line from the canvas based on the index
+ * @param index The index of the line to remove. If it does not exist then
+ * this is a no-op.
+ */
+void MplFigureCanvas::removeLine(const size_t index) {
+  auto &lines = m_pydata->lines;
+  if (lines.empty() || index >= lines.size())
+    return;
+  auto posIter = std::next(std::begin(lines), index);
+  auto line = *posIter;
+  lines.erase(posIter);
+  PythonObject(NewRef(PyObject_CallMethod(line.get(), PYSTR_LITERAL("remove"),
+                                          PYSTR_LITERAL(""), nullptr)));
+}
+
+/**
+ * Plot lines to the current axis
  * @param x A container of X points. Requires support for forward iteration.
  * @param y A container of Y points. Requires support for forward iteration.
  * @param format A format string for the line/markers
  */
 template <typename XArrayType, typename YArrayType>
-void MplFigureCanvas::plot(const XArrayType &x, const YArrayType &y,
-                           const char *format) {
+void MplFigureCanvas::plotLine(const XArrayType &x, const YArrayType &y,
+                               const char *format) {
   NDArray1D xnp(x), ynp(y);
   auto axes = m_pydata->gca();
-  PythonObject(NewRef(PyObject_CallMethod(axes.get(), PYSTR_LITERAL("plot"),
-                                          PYSTR_LITERAL("(OOs)"), xnp.get(),
-                                          ynp.get(), format)));
+  // This will return a list of lines but we know we are only plotting 1
+  auto lines =
+      PyObject_CallMethod(axes.get(), PYSTR_LITERAL("plot"),
+                          PYSTR_LITERAL("(OOs)"), xnp.get(), ynp.get(), format);
+  if (!lines) {
+    throw PythonError(errorToString());
+  }
+  m_pydata->lines.emplace_back(PythonObject(NewRef(PyList_GetItem(lines, 0))));
+  detail::decref(lines);
 }
 
 //------------------------------------------------------------------------------
 // Explicit template instantations
 //------------------------------------------------------------------------------
 using VectorDouble = std::vector<double>;
-template void MplFigureCanvas::plot<VectorDouble, VectorDouble>(
+template void MplFigureCanvas::plotLine<VectorDouble, VectorDouble>(
     const VectorDouble &, const VectorDouble &, const char *);
 }
 }
