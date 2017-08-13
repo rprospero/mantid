@@ -1,5 +1,6 @@
 #include "MantidQtWidgets/MplCpp/PythonErrors.h"
 #include "MantidQtWidgets/MplCpp/PythonObject.h"
+#include "MantidQtWidgets/Common/PythonThreading.h"
 
 namespace MantidQt { namespace Widgets { namespace MplCpp {
 
@@ -11,6 +12,8 @@ namespace MantidQt { namespace Widgets { namespace MplCpp {
  */
 std::string errorToString() {
   std::string error;
+  ScopedPythonGIL gil;
+
   auto exception = PyErr_Occurred();
   if (!exception)
     return error;

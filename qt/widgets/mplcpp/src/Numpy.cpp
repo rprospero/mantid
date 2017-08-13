@@ -1,5 +1,7 @@
 #include "MantidQtWidgets/MplCpp/Numpy.h"
 
+#include "MantidQtWidgets/Common/PythonThreading.h"
+
 // See https://docs.scipy.org/doc/numpy/reference/c-api.array.html#miscellaneous
 #define PY_ARRAY_UNIQUE_SYMBOL MPLCPP_ARRAY_API
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
@@ -12,14 +14,19 @@ namespace {
 // Simply struct to aid in global initialization of numpy
 struct ImportArray {
   ImportArray() {
-    Py_Initialize();
+    PythonGIL gil;
     import_array();
   }
-  ~ImportArray() { Py_Finalize(); }
+  ~ImportArray() {}
 };
 // static instance to call import_array()
 // Do not remove this!!
-ImportArray _importer;
+// ImportArray _importer;
+
+void initializeNumpy() {
+  static ImportArray importer;
+  (void)importer;
+}
 }
 
 namespace MantidQt {
@@ -29,6 +36,7 @@ namespace MplCpp {
 template <typename Iterable> PythonObject copyToNDArray(const Iterable &data) {
   static_assert(std::is_same<typename Iterable::value_type, double>::value,
                 "Element type must be double.");
+  initializeNumpy();
   npy_intp length = static_cast<npy_intp>(data.size());
   auto ndarray =
       PyArray_New(&PyArray_Type, 1, &length, NPY_DOUBLE, nullptr, nullptr,

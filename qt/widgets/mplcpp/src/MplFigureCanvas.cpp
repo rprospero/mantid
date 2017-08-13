@@ -2,6 +2,7 @@
 #include "MantidQtWidgets/MplCpp//NDArray1D.h"
 #include "MantidQtWidgets/MplCpp/PythonErrors.h"
 #include "MantidQtWidgets/MplCpp/SipUtils.h"
+#include "MantidQtWidgets/Common/PythonThreading.h"
 
 #include <QVBoxLayout>
 
@@ -30,14 +31,17 @@ const char *MPL_QT_BACKEND = "matplotlib.backends.backend_qt5agg";
 #endif
 
 // Return static instance of figure type
+// The GIL must be held to call this
 const PythonObject &mplFigureType() {
   static PythonObject figureType;
-  if (figureType.isNone())
+  if (figureType.isNone()) {
     figureType = getAttrOnModule("matplotlib.figure", "Figure");
+  }
   return figureType;
 }
 
 // Return static instance of figure canvas type
+// The GIL must be held to call this
 const PythonObject &mplFigureCanvasType() {
   static PythonObject figureCanvasType;
   if (figureCanvasType.isNone()) {
@@ -75,6 +79,7 @@ struct MplFigureCanvas::PyObjectHolder {
    * @return matplotlib.axes.Axes object
    */
   PythonObject gca() {
+    ScopedPythonGIL gil;
     auto figure = PythonObject(
         NewRef(PyObject_GetAttrString(canvas.get(), PYSTR_LITERAL("figure"))));
     return PythonObject(NewRef(PyObject_CallMethod(
@@ -98,9 +103,16 @@ struct MplFigureCanvas::PyObjectHolder {
  * @param parent A pointer to the parent widget, can be nullptr
  */
 MplFigureCanvas::MplFigureCanvas(int subplotLayout, QWidget *parent)
-    : QWidget(parent), m_pydata(new PyObjectHolder(subplotLayout)) {
+    : QWidget(parent), m_pydata(nullptr) {
   setLayout(new QVBoxLayout);
-  auto cpp = static_cast<QWidget *>(sipUnwrap(m_pydata->canvas.get()));
+
+  QWidget *cpp(nullptr);
+  { // acquire GIL
+    ScopedPythonGIL gil;
+    m_pydata = new PyObjectHolder(subplotLayout);
+    cpp = static_cast<QWidget *>(sipUnwrap(m_pydata->canvas.get()));
+  } // release GIL
+
   assert(cpp);
   layout()->addWidget(cpp);
 }
@@ -115,6 +127,7 @@ MplFigureCanvas::~MplFigureCanvas() { delete m_pydata; }
  * @return A SubPlotSpec object defining the geometry
  */
 SubPlotSpec MplFigureCanvas::getGeometry() const {
+  ScopedPythonGIL gil;
   auto axes = m_pydata->gca();
   auto geometry = PythonObject(NewRef(PyObject_CallMethod(
       axes.get(), PYSTR_LITERAL("get_geometry"), PYSTR_LITERAL(""), nullptr)));
@@ -127,6 +140,7 @@ SubPlotSpec MplFigureCanvas::getGeometry() const {
  * @return The number of Line2Ds on the canvas
  */
 size_t MplFigureCanvas::nlines() const {
+  ScopedPythonGIL gil;
   auto axes = m_pydata->gca();
   auto lines = PythonObject(NewRef(PyObject_CallMethod(
       axes.get(), PYSTR_LITERAL("get_lines"), PYSTR_LITERAL(""), nullptr)));
@@ -141,6 +155,7 @@ size_t MplFigureCanvas::nlines() const {
  * to active
  */
 void MplFigureCanvas::addSubPlot(int subplotLayout) {
+  ScopedPythonGIL gil;
   auto figure = PythonObject(NewRef(
       PyObject_GetAttrString(m_pydata->canvas.get(), PYSTR_LITERAL("figure"))));
   PythonObject(
@@ -154,6 +169,7 @@ void MplFigureCanvas::addSubPlot(int subplotLayout) {
  * this is a no-op.
  */
 void MplFigureCanvas::removeLine(const size_t index) {
+  ScopedPythonGIL gil;
   auto &lines = m_pydata->lines;
   if (lines.empty() || index >= lines.size())
     return;
@@ -173,6 +189,7 @@ void MplFigureCanvas::removeLine(const size_t index) {
 template <typename XArrayType, typename YArrayType>
 void MplFigureCanvas::plotLine(const XArrayType &x, const YArrayType &y,
                                const char *format) {
+  ScopedPythonGIL gil;
   NDArray1D xnp(x), ynp(y);
   auto axes = m_pydata->gca();
   // This will return a list of lines but we know we are only plotting 1
