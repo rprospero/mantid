@@ -2,7 +2,7 @@
 #define PYTHONOBJECT_H
 
 #include "MantidQtWidgets/MplCpp/DllOption.h"
-#include "MantidQtWidgets/MplCpp/WrapPython.h"
+#include "MantidQtWidgets/Common/PythonSystemHeader.h"
 
 #include <utility>
 

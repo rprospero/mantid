@@ -22,18 +22,18 @@ set (NOMOC_HEADERS
   inc/MantidQtWidgets/MplCpp/PythonErrors.h
   inc/MantidQtWidgets/MplCpp/PythonObject.h
   inc/MantidQtWidgets/MplCpp/SipUtils.h
-  inc/MantidQtWidgets/MplCpp/WrapPython.h
 )
 
 set (INCLUDES
   ${CMAKE_CURRENT_LIST_DIR}/inc
+  ${CMAKE_CURRENT_LIST_DIR}/../commmon/inc
 )
 
 # Target
 include_directories (SYSTEM ${PYTHON_INCLUDE_DIR})
 mtd_add_qt_library (TARGET_NAME MantidQtWidgetsMplCpp QT_VERSION 4 SRC ${LIB_SRCS} MOC ${MOC_HEADERS}
                     NOMOC ${NOMOC_HEADERS} INCLUDE_DIRS ${INCLUDES}
-                    LINK_LIBRARIES ${PYTHON_LIBRARIES})
+                    LINK_LIBRARIES MantidQtWidgetsCommon ${PYTHON_LIBRARIES})
 set_target_properties (MantidQtWidgetsMplCpp-Qt4 PROPERTIES COMPILE_DEFINITIONS IN_MANTIDQT_MPLCPP)
 
 # Tests

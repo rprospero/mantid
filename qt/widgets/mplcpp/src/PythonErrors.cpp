@@ -1,5 +1,5 @@
-#include "MantidQtWidgets/MplCpp/PythonObject.h"
 #include "MantidQtWidgets/MplCpp/PythonErrors.h"
+#include "MantidQtWidgets/MplCpp/PythonObject.h"
 
 namespace MantidQt { namespace Widgets { namespace MplCpp {
 
