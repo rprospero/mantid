@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>704</width>
-    <height>335</height>
+    <width>954</width>
+    <height>730</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -273,6 +273,9 @@
           </color>
          </property>
         </widget>
+       </item>
+       <item>
+        <widget class="MantidQt::MantidWidgets::PreviewPlot" name="ppPlotDiff" native="true"/>
        </item>
        <item>
         <layout class="QHBoxLayout" name="loPlotOptions">
