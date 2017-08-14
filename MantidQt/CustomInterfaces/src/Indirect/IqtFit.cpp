@@ -155,6 +155,19 @@ void IqtFit::run() {
     return;
   }
 
+  const long specMin = m_uiForm.spSpectraMin->value();
+  const long specMax = m_uiForm.spSpectraMax->value();
+
+  IAlgorithm_sptr iqtFitAlg = iqtFitAlgorithm(specMin, specMax);
+
+  m_batchAlgoRunner->addAlgorithm(iqtFitAlg);
+  connect(m_batchAlgoRunner, SIGNAL(batchComplete(bool)), this,
+          SLOT(algorithmComplete(bool)));
+  m_batchAlgoRunner->executeBatchAsync();
+}
+
+Mantid::API::IAlgorithm_sptr IqtFit::iqtFitAlgorithm(const long &specMin,
+                                                     const long &specMax) {
   const bool constrainBeta = m_uiForm.ckConstrainBeta->isChecked();
   const bool constrainIntens = m_uiForm.ckConstrainIntensities->isChecked();
   CompositeFunction_sptr func = createFunction();
@@ -168,73 +181,45 @@ void IqtFit::run() {
 
   const auto function = std::string(func->asString());
   const auto fitType = fitTypeString().toStdString();
-  const long specMin = m_uiForm.spSpectraMin->value();
-  const long specMax = m_uiForm.spSpectraMax->value();
   const auto minimizer = minimizerString("$outputname_$wsindex");
   m_plotOption = m_uiForm.cbPlotType->currentText().toStdString();
   const auto startX = boost::lexical_cast<double>(
-      m_properties["StartX"]->valueText().toStdString());
+    m_properties["StartX"]->valueText().toStdString());
   const auto endX = boost::lexical_cast<double>(
-      m_properties["EndX"]->valueText().toStdString());
+    m_properties["EndX"]->valueText().toStdString());
   const auto maxIt = boost::lexical_cast<long>(
-      m_properties["MaxIterations"]->valueText().toStdString());
+    m_properties["MaxIterations"]->valueText().toStdString());
+
+  m_baseName = constructBaseName(m_iqtFInputWSName.toStdString(), fitType,
+    true, specMin, specMax);
+
+  IAlgorithm_sptr iqtFitAlg;
 
   if (!constrainBeta) {
-    m_baseName = constructBaseName(m_iqtFInputWSName.toStdString(), fitType,
-                                   false, specMin, specMax);
-    auto iqtFitSequential =
-        AlgorithmManager::Instance().create("IqtFitSequential");
-    iqtFitSequential->initialize();
-    iqtFitSequential->setProperty("InputWorkspace", m_iqtFInputWS);
-    iqtFitSequential->setProperty("Function", function);
-    iqtFitSequential->setProperty("FitType", fitType);
-    iqtFitSequential->setProperty("StartX", startX);
-    iqtFitSequential->setProperty("EndX", endX);
-    iqtFitSequential->setProperty("SpecMin", specMin);
-    iqtFitSequential->setProperty("SpecMax", specMax);
-    iqtFitSequential->setProperty("Minimizer", minimizer.toStdString());
-    iqtFitSequential->setProperty("MaxIterations", maxIt);
-    iqtFitSequential->setProperty("ConstrainIntensities", constrainIntens);
-    iqtFitSequential->setProperty("OutputResultWorkspace",
-                                  m_baseName + "_Result");
-    iqtFitSequential->setProperty("OutputParameterWorkspace",
-                                  m_baseName + "_Parameters");
-    iqtFitSequential->setProperty("OutputWorkspaceGroup",
-                                  m_baseName + "_Workspaces");
-    m_pythonExportWsName = (m_baseName + "_Workspaces");
-    m_batchAlgoRunner->addAlgorithm(iqtFitSequential);
-    connect(m_batchAlgoRunner, SIGNAL(batchComplete(bool)), this,
-            SLOT(algorithmComplete(bool)));
-    m_batchAlgoRunner->executeBatchAsync();
-
-  } else {
-    m_baseName = constructBaseName(m_iqtFInputWSName.toStdString(), fitType,
-                                   true, specMin, specMax);
-    auto iqtFitMultiple = AlgorithmManager::Instance().create("IqtFitMultiple");
-    iqtFitMultiple->initialize();
-    iqtFitMultiple->setProperty("InputWorkspace",
-                                m_iqtFInputWSName.toStdString());
-    iqtFitMultiple->setProperty("Function", function);
-    iqtFitMultiple->setProperty("FitType", fitType);
-    iqtFitMultiple->setProperty("StartX", startX);
-    iqtFitMultiple->setProperty("EndX", endX);
-    iqtFitMultiple->setProperty("SpecMin", specMin);
-    iqtFitMultiple->setProperty("SpecMax", specMax);
-    iqtFitMultiple->setProperty("Minimizer", minimizer.toStdString());
-    iqtFitMultiple->setProperty("MaxIterations", maxIt);
-    iqtFitMultiple->setProperty("ConstrainIntensities", constrainIntens);
-    iqtFitMultiple->setProperty("OutputResultWorkspace",
-                                m_baseName + "_Result");
-    iqtFitMultiple->setProperty("OutputParameterWorkspace",
-                                m_baseName + "_Parameters");
-    iqtFitMultiple->setProperty("OutputWorkspaceGroup",
-                                m_baseName + "_Workspaces");
-    m_pythonExportWsName = (m_baseName + "_Workspaces");
-    m_batchAlgoRunner->addAlgorithm(iqtFitMultiple);
-    connect(m_batchAlgoRunner, SIGNAL(batchComplete(bool)), this,
-            SLOT(algorithmComplete(bool)));
-    m_batchAlgoRunner->executeBatchAsync();
+    iqtFitAlg = AlgorithmManager::Instance().create("IqtFitSequential");
   }
+  else {
+    iqtFitAlg = AlgorithmManager::Instance().create("IqtFitMultiple");
+  }
+
+  iqtFitAlg->initialize();
+  iqtFitAlg->setProperty("InputWorkspace", m_iqtFInputWS);
+  iqtFitAlg->setProperty("Function", function);
+  iqtFitAlg->setProperty("FitType", fitType);
+  iqtFitAlg->setProperty("StartX", startX);
+  iqtFitAlg->setProperty("EndX", endX);
+  iqtFitAlg->setProperty("SpecMin", specMin);
+  iqtFitAlg->setProperty("SpecMax", specMax);
+  iqtFitAlg->setProperty("Minimizer", minimizer.toStdString());
+  iqtFitAlg->setProperty("MaxIterations", maxIt);
+  iqtFitAlg->setProperty("ConstrainIntensities", constrainIntens);
+  iqtFitAlg->setProperty("OutputResultWorkspace",
+    m_baseName + "_Result");
+  iqtFitAlg->setProperty("OutputParameterWorkspace",
+    m_baseName + "_Parameters");
+  iqtFitAlg->setProperty("OutputWorkspaceGroup",
+    m_baseName + "_Workspaces");
+  return iqtFitAlg;
 }
 
 /**
@@ -329,8 +314,12 @@ std::string IqtFit::constructBaseName(const std::string &inputName,
   baseName += "_IqtFit_";
   baseName += functionType;
   baseName += QString::number(specMin);
-  baseName += "_to_";
-  baseName += QString::number(specMax);
+
+  // Check whether a single spectrum is being fit
+  if (specMin != specMax) {
+    baseName += "_to_";
+    baseName += QString::number(specMax);
+  }
   const auto baseName_str = baseName.toStdString();
   return baseName_str;
 }
@@ -818,57 +807,9 @@ void IqtFit::singleFit() {
   disconnect(m_dblManager, SIGNAL(propertyChanged(QtProperty *)), this,
              SLOT(plotGuess(QtProperty *)));
 
-  // First create the function
-  auto function = createFunction();
+  long specNo = m_uiForm.spPlotSpectrum->text().toLong();
 
-  const int fitType = m_uiForm.cbFitType->currentIndex();
-  if (m_uiForm.ckConstrainIntensities->isChecked()) {
-    switch (fitType) {
-    case 0: // 1 Exp
-    case 2: // 1 Str
-      m_ties = "f1.Height = 1-f0.A0";
-      break;
-    case 1: // 2 Exp
-    case 3: // 1 Exp & 1 Str
-      m_ties = "f1.Height=1-f2.Height-f0.A0";
-      break;
-    default:
-      break;
-    }
-  }
-  QString ftype = fitTypeString();
-
-  updatePlot();
-  if (m_iqtFInputWS == NULL) {
-    return;
-  }
-
-  QString pyInput =
-      "from IndirectCommon import getWSprefix\nprint getWSprefix('%1')\n";
-  pyInput = pyInput.arg(m_iqtFInputWSName);
-  m_singleFitOutputName = runPythonCode(pyInput).trimmed() + QString("iqt_") +
-                          ftype + m_uiForm.spPlotSpectrum->text();
-
-  // Create the Fit Algorithm
-  m_singleFitAlg = AlgorithmManager::Instance().create("Fit");
-  m_singleFitAlg->initialize();
-  m_singleFitAlg->setPropertyValue("Function", function->asString());
-  m_singleFitAlg->setPropertyValue("InputWorkspace",
-                                   m_iqtFInputWSName.toStdString());
-  m_singleFitAlg->setProperty("WorkspaceIndex",
-                              m_uiForm.spPlotSpectrum->text().toInt());
-  m_singleFitAlg->setProperty(
-      "StartX", m_iqtFRangeManager->value(m_properties["StartX"]));
-  m_singleFitAlg->setProperty("EndX",
-                              m_iqtFRangeManager->value(m_properties["EndX"]));
-  m_singleFitAlg->setProperty(
-      "MaxIterations",
-      static_cast<int>(m_dblManager->value(m_properties["MaxIterations"])));
-  m_singleFitAlg->setProperty(
-      "Minimizer", minimizerString(m_singleFitOutputName).toStdString());
-  m_singleFitAlg->setProperty("Ties", m_ties.toStdString());
-  m_singleFitAlg->setPropertyValue("Output",
-                                   m_singleFitOutputName.toStdString());
+  m_singleFitAlg = iqtFitAlgorithm(specNo, specNo);
 
   connect(m_batchAlgoRunner, SIGNAL(batchComplete(bool)), this,
           SLOT(singleFitComplete(bool)));
