@@ -32,10 +32,9 @@ using std::vector;
 using namespace Mantid::PhysicalConstants;
 using namespace Geometry;
 
-// Constants required internally only, so make them static. These are
-// Chebyshev expansion coefficients copied directly from Carpenter 1969 Table 1
+// Constants required internally only, so make them static
 namespace { // anonymous
-static const double CHEBYSHEV[] = {
+static const double C[] = {
     0.730284,  -0.249987, 0.019448,  -0.000006, 0.000249,  -0.000004, 0.848859,
     -0.452690, 0.056557,  -0.000009, 0.000000,  -0.000006, 1.133129,  -0.749962,
     0.118245,  -0.000018, -0.001345, -0.000012, 1.641112,  -1.241639, 0.226247,
@@ -64,9 +63,6 @@ static const double Z_initial[] = {
 
 static const double LAMBDA_REF =
     1.81; ///< Wavelength that the calculations are based on
-// Badly named constants, no explanation of the origin of these
-// values. They appear to be used when calculating the multiple
-// scattering correction factor.
 static const double COEFF4 = 1.1967;
 static const double COEFF5 = -0.8667;
 } // end of anonymous
@@ -106,6 +102,11 @@ void MultipleScatteringCylinderAbsorption::init() {
   declareProperty("SampleNumberDensity", 0.0721,
                   "Coefficient 2, density if not set with SetSampleMaterial");
   declareProperty("CylinderSampleRadius", 0.3175, "Sample radius, in cm");
+  declareProperty(
+	  "MultipleScattering", True,
+	  "If True then also correct for the effects of multiple scattering."
+	  "Please note that the MS correction assumes the scattering is elastic.",
+	  Direction::Input);
 }
 
 /**
@@ -118,6 +119,7 @@ void MultipleScatteringCylinderAbsorption::exec() {
   double coeff1 = getProperty("AttenuationXSection");
   double coeff2 = getProperty("SampleNumberDensity");
   double coeff3 = getProperty("ScatteringXSection");
+  bool mscat = getProperty("MultipleScattering");
   const Material &sampleMaterial = in_WS->sample().getMaterial();
   if (sampleMaterial.totalScatterXSection(LAMBDA_REF) != 0.0) {
     g_log.information() << "Using material \"" << sampleMaterial.name()
@@ -194,7 +196,7 @@ void MultipleScatteringCylinderAbsorption::exec() {
       HistogramE err(std::move(err_vec));
 
       apply_msa_correction(tth_rad, radius, coeff1, coeff2, coeff3, tof, y,
-                           err);
+                           err, mscat);
 
       std::vector<WeightedEventNoTime> &events =
           eventList.getWeightedEventsNoTime();
@@ -226,7 +228,7 @@ void MultipleScatteringCylinderAbsorption::exec() {
 
       apply_msa_correction(tth_rad, radius, coeff1, coeff2, coeff3,
                            out_WS->x(index), out_WS->mutableY(index),
-                           out_WS->mutableE(index));
+                           out_WS->mutableE(index), mscat);
       prog.report();
     }
     setProperty("OutputWorkspace", out_WS);
@@ -250,11 +252,11 @@ vector<double> createZ(const double angle_rad) {
       if (iplusj <= 5) {
         l = 0;
         J = 1 + l + 6 * (i - 1) + 6 * 4 * (j - 1);
-        sum = CHEBYSHEV[J - 1];
+        sum = C[J - 1];
 
         for (l = 1; l <= 5; l++) {
           J = 1 + l + 6 * (i - 1) + 6 * 4 * (j - 1);
-          sum = sum + CHEBYSHEV[J - 1] * cos(l * theta_rad);
+          sum = sum + C[J - 1] * cos(l * theta_rad);
         }
         J = 1 + i + 6 * j;
         Z[J - 1] = sum;
@@ -287,19 +289,17 @@ double AttFac(const double sigir, const double sigsr, const vector<double> &Z) {
 
 double calculate_msa_factor(const double radius, const double Q2,
                             const double sigsct, const vector<double> &Z,
-                            const double wavelength) {
+                            const double wavelength,const bool mscat) {
 
   const double sigabs = Q2 * wavelength;
   const double sigir = (sigabs + sigsct) * radius;
-  /**
-  * By setting the incident and scattered cross sections to be equal
-  * we implicitly assume elastic scattering because in general these will
-  * vary with neutron energy.
-  **/
   const double sigsr = sigir;
+  double deltp = 0.0;
 
-  const double delta = COEFF4 * sigir + COEFF5 * sigir * sigir;
-  const double deltp = (delta * sigsct) / (sigsct + sigabs);
+  if (mscat) {
+	  const double delta = COEFF4 * sigir + COEFF5 * sigir * sigir;
+	  deltp = (delta * sigsct) / (sigsct + sigabs);
+  }
 
   double temp = AttFac(sigir, sigsr, Z);
   return ((1.0 - deltp) / temp);
@@ -324,7 +324,7 @@ double calculate_msa_factor(const double radius, const double Q2,
 void MultipleScatteringCylinderAbsorption::apply_msa_correction(
     const double angle_deg, const double radius, const double coeff1,
     const double coeff2, const double coeff3, const HistogramX &wavelength,
-    HistogramY &y_val, HistogramE &errors) {
+    HistogramY &y_val, HistogramE &errors, const bool mscat) {
 
   const size_t NUM_Y = y_val.size();
   bool is_histogram = false;
@@ -346,7 +346,7 @@ void MultipleScatteringCylinderAbsorption::apply_msa_correction(
     if (is_histogram) // average with next value
       wl_val = .5 * (wl_val + wavelength[j + 1]);
 
-    const double temp = calculate_msa_factor(radius, Q2, sigsct, Z, wl_val);
+    const double temp = calculate_msa_factor(radius, Q2, sigsct, Z, wl_val, mscat);
 
     y_val[j] *= temp;
     errors[j] *= temp;

@@ -68,11 +68,11 @@ private:
 
   /// MultipleScatteringCylinderAbsorption correction calculation.
   void apply_msa_correction(const double angle_deg, const double radius,
-                            const double coeff1, const double coeff2,
-                            const double coeff3,
-                            const HistogramData::HistogramX &wavelength,
-                            HistogramData::HistogramY &y_val,
-                            HistogramData::HistogramE &errors);
+	  const double coeff1, const double coeff2,
+	  const double coeff3,
+	  const HistogramData::HistogramX &wavelength,
+	  HistogramData::HistogramY &y_val,
+	  HistogramData::HistogramE &errors, const bool mscat);
 };
 
 } // namespace Algorithm
