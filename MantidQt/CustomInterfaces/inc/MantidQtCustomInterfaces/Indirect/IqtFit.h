@@ -66,6 +66,8 @@ private:
   std::string constructBaseName(const std::string &inputName,
                                 const std::string &fitType, const bool &multi,
                                 const long &specMin, const long &specMax);
+  Mantid::API::IAlgorithm_sptr iqtFitAlgorithm(const long &specMin,
+                                               const long &specMax);
 
   Ui::IqtFit m_uiForm;
   QtStringPropertyManager *m_stringManager;
