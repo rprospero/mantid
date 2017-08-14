@@ -47,6 +47,26 @@ public:
                       canvas.nlines());
   }
 
+  void test_Setting_Axis_And_Figure_Titles() {
+    MplFigureCanvas canvas;
+    canvas.setLabel(Axes::Label::X, "new x label");
+    TS_ASSERT_EQUALS("new x label", canvas.getLabel(Axes::Label::X));
+    canvas.setLabel(Axes::Label::Y, "new y label");
+    TS_ASSERT_EQUALS("new y label", canvas.getLabel(Axes::Label::Y));
+    canvas.setLabel(Axes::Label::Title, "new title");
+    TS_ASSERT_EQUALS("new title", canvas.getLabel(Axes::Label::Title));
+  }
+
+  void test_Setting_Scales_With_Valid_Range() {
+    MplFigureCanvas canvas;
+    TS_ASSERT_THROWS_NOTHING(canvas.setScale(Axes::Scale::X, -1, 5));
+    TS_ASSERT_EQUALS(std::make_tuple(-1., 5.), canvas.getScale(Axes::Scale::X));
+
+    TS_ASSERT_THROWS_NOTHING(canvas.setScale(Axes::Scale::Y, -3, 10));
+    TS_ASSERT_EQUALS(std::make_tuple(-3., 10.),
+                     canvas.getScale(Axes::Scale::Y));
+  }
+
   //---------------------------------------------------------------------------
   // Failure
   //---------------------------------------------------------------------------
@@ -58,6 +78,12 @@ public:
                       canvas.plotLine(arr1, arr2, "r-"), PythonError);
     TSM_ASSERT_THROWS("plotLine should throw if len(x) > len(y)",
                       canvas.plotLine(arr2, arr1, "r-"), PythonError);
+  }
+
+  void test_addSubPlot_Throws_With_Invalid_Configuration() {
+    MplFigureCanvas canvas;
+    TS_ASSERT_THROWS(canvas.addSubPlot(-111), PythonError);
+    TS_ASSERT_THROWS(canvas.addSubPlot(1000), PythonError);
   }
 };
 

@@ -58,6 +58,12 @@ const PythonObject &mplFigureCanvasType() {
 // MplFigureCanvas::PyObjectHolder - Private implementation
 //------------------------------------------------------------------------------
 struct MplFigureCanvas::PyObjectHolder {
+  // QtAgg canvas object
+  PythonObject canvas;
+  // List of lines on current plot
+  std::vector<PythonObject> lines;
+
+  // constructor
   PyObjectHolder(int subplotLayout) {
     // Create a figure and attach it to a canvas object. This creates a
     // blank widget
@@ -85,9 +91,6 @@ struct MplFigureCanvas::PyObjectHolder {
     return PythonObject(NewRef(PyObject_CallMethod(
         figure.get(), PYSTR_LITERAL("gca"), PYSTR_LITERAL(""), nullptr)));
   }
-
-  PythonObject canvas;
-  std::vector<PythonObject> lines;
 };
 
 //------------------------------------------------------------------------------
@@ -148,6 +151,52 @@ size_t MplFigureCanvas::nlines() const {
 }
 
 /**
+ * Get a label from the canvas
+ * @param type The label type
+ * @return The label on the requested axis
+ */
+QString MplFigureCanvas::getLabel(const Axes::Label type) const {
+  const char *method;
+  if (type == Axes::Label::X)
+    method = "get_xlabel";
+  else if (type == Axes::Label::Y)
+    method = "get_ylabel";
+  else if (type == Axes::Label::Title)
+    method = "get_title";
+  else
+    throw std::logic_error("MplFigureCanvas::getLabel() - Unknown label type.");
+
+  ScopedPythonGIL gil;
+  auto axes = m_pydata->gca();
+  auto label = PythonObject(NewRef(PyObject_CallMethod(
+      axes.get(), PYSTR_LITERAL(method), PYSTR_LITERAL(""), nullptr)));
+  return QString::fromAscii(PyString_AsString(label.get()));
+}
+
+/**
+ * Get the value of the requested scale
+ * @param type Scale type to retrieve
+ * @return A tuple of (min,max)
+ */
+std::tuple<double, double>
+MplFigureCanvas::getScale(const Axes::Scale type) const {
+  const char *method;
+  if (type == Axes::Scale::X)
+    method = "get_xlim";
+  else if (type == Axes::Scale::Y)
+    method = "get_ylim";
+  else
+    throw std::logic_error("MplFigureCanvas::getScale() - Unknown scale type.");
+
+  ScopedPythonGIL gil;
+  auto axes = m_pydata->gca();
+  auto scale = PythonObject(NewRef(PyObject_CallMethod(
+      axes.get(), PYSTR_LITERAL(method), PYSTR_LITERAL(""), nullptr)));
+  return std::make_tuple(PyFloat_AsDouble(PyTuple_GetItem(scale.get(), 0)),
+                         PyFloat_AsDouble(PyTuple_GetItem(scale.get(), 1)));
+}
+
+/**
  * Equivalent of Figure.add_subplot. If the subplot already exists then
  * it simply sets that plot number to be active
  * @param subplotLayout Subplot geometry in matplotlib convenience format,
@@ -158,9 +207,11 @@ void MplFigureCanvas::addSubPlot(int subplotLayout) {
   ScopedPythonGIL gil;
   auto figure = PythonObject(NewRef(
       PyObject_GetAttrString(m_pydata->canvas.get(), PYSTR_LITERAL("figure"))));
-  PythonObject(
-      NewRef(PyObject_CallMethod(figure.get(), PYSTR_LITERAL("add_subplot"),
-                                 PYSTR_LITERAL("(i)"), subplotLayout)));
+  auto result = PyObject_CallMethod(figure.get(), PYSTR_LITERAL("add_subplot"),
+                                    PYSTR_LITERAL("(i)"), subplotLayout);
+  if (!result)
+    throw PythonError(errorToString());
+  detail::decref(result);
 }
 
 /**
@@ -178,6 +229,55 @@ void MplFigureCanvas::removeLine(const size_t index) {
   lines.erase(posIter);
   PythonObject(NewRef(PyObject_CallMethod(line.get(), PYSTR_LITERAL("remove"),
                                           PYSTR_LITERAL(""), nullptr)));
+}
+
+/**
+ * Set a label on the requested axis
+ * @param type Type of label
+ * @param label Label for the axis
+ */
+void MplFigureCanvas::setLabel(const Axes::Label type, const char *label) {
+  const char *method;
+  if (type == Axes::Label::X)
+    method = "set_xlabel";
+  else if (type == Axes::Label::Y)
+    method = "set_ylabel";
+  else if (type == Axes::Label::Title)
+    method = "set_title";
+  else
+    throw std::logic_error("MplFigureCanvas::setLabel() - Unknown label type.");
+
+  ScopedPythonGIL gil;
+  auto axes = m_pydata->gca();
+  auto result = PyObject_CallMethod(axes.get(), PYSTR_LITERAL(method),
+                                    PYSTR_LITERAL("(s)"), label);
+  if (!result)
+    throw PythonError(errorToString());
+  detail::decref(result);
+}
+
+/**
+ * Set the requested scale to the given range
+ * @param type The scale given by an Axes::Scale type
+ * @param min Minimum value
+ * @param max Maximum value
+ */
+void MplFigureCanvas::setScale(const Axes::Scale type, double min, double max) {
+  const char *method;
+  if (type == Axes::Scale::X)
+    method = "set_xlim";
+  else if (type == Axes::Scale::Y)
+    method = "set_ylim";
+  else
+    throw std::logic_error("MplFigureCanvas::setScale() - Unknown scale type.");
+
+  ScopedPythonGIL gil;
+  auto axes = m_pydata->gca();
+  auto result = PyObject_CallMethod(axes.get(), PYSTR_LITERAL(method),
+                                    PYSTR_LITERAL("(dd)"), min, max);
+  if (!result)
+    throw PythonError(errorToString());
+  detail::decref(result);
 }
 
 /**

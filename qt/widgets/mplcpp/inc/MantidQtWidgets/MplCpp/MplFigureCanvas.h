@@ -3,10 +3,13 @@
 #include "MantidQtWidgets/MplCpp/DllOption.h"
 #include <QWidget>
 
+#include <tuple>
+
 namespace MantidQt {
 namespace Widgets {
 namespace MplCpp {
 
+/// Defines the geometry of the canvas
 struct EXPORT_OPT_MANTIDQT_MPLCPP SubPlotSpec {
   SubPlotSpec(long rows, long cols) : nrows(rows), ncols(cols) {}
   // These are long to match Python ints so we can avoid some casts
@@ -23,6 +26,14 @@ struct EXPORT_OPT_MANTIDQT_MPLCPP SubPlotSpec {
 inline bool operator==(const SubPlotSpec &lhs, const SubPlotSpec &rhs) {
   return lhs.nrows == rhs.nrows && lhs.ncols == rhs.ncols;
 }
+
+/**
+ * Encapsulates properties related to matplotlib Axes instances
+ */
+struct Axes {
+  enum class Label { X, Y, Title };
+  enum class Scale { X, Y };
+};
 
 /**
  * C++ wrapper of a matplotlib backend FigureCanvas
@@ -43,6 +54,8 @@ public:
   ///@name Query properties
   SubPlotSpec getGeometry() const;
   size_t nlines() const;
+  QString getLabel(const Axes::Label type) const;
+  std::tuple<double, double> getScale(const Axes::Scale type) const;
   ///@}
 
   ///@{
@@ -51,6 +64,8 @@ public:
   template <typename XArrayType, typename YArrayType>
   void plotLine(const XArrayType &x, const YArrayType &y, const char *format);
   void removeLine(const size_t index);
+  void setLabel(const Axes::Label type, const char *label);
+  void setScale(const Axes::Scale type, double min, double max);
   ///@}
 
 private:

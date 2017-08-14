@@ -4,7 +4,7 @@
 #include <QApplication>
 
 #include "cxxtest/GlobalFixture.h"
-#include "MantidQtWidgets/MplCpp/WrapPython.h"
+#include "MantidQtWidgets/Common/PythonThreading.h"
 
 /**
  * PythonInterpreter
@@ -44,10 +44,10 @@ public:
     delete m_app;
     return true;
   }
+
 private:
   QApplication *m_app;
 };
-
 
 //------------------------------------------------------------------------------
 // Static definitions
