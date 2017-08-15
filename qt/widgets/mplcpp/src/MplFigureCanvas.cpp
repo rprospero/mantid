@@ -258,6 +258,8 @@ void MplFigureCanvas::removeLine(const size_t index) {
  * Clear the current axes of artists
  */
 void MplFigureCanvas::clearLines() {
+  if (m_pydata->lines.empty())
+    return;
   ScopedPythonGIL gil;
   auto axes = m_pydata->gca();
   PythonObject(NewRef(PyObject_CallMethod(axes.get(), PYSTR_LITERAL("clear"),
