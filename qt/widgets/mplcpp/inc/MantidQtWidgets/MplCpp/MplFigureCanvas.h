@@ -59,12 +59,27 @@ public:
   ///@}
 
   ///@{
-  ///@name Modify the canvas
+  ///@name Subplot control
   void addSubPlot(int subplotLayout);
+  ///@}
+
+  ///@{
+  ///@name Lines control
   template <typename XArrayType, typename YArrayType>
   void plotLine(const XArrayType &x, const YArrayType &y, const char *format);
   void removeLine(const size_t index);
+  void clearLines();
+  ///@}
+
+  ///@{
+  ///@name Axis annotation
   void setLabel(const Axes::Label type, const char *label);
+  inline void setLabel(const Axes::Label type, const std::string &label) {
+    setLabel(type, label.c_str());
+  }
+  inline void setLabel(const Axes::Label type, const QString &label) {
+    setLabel(type, label.toAscii().constData());
+  }
   void setScale(const Axes::Scale type, double min, double max);
   ///@}
 

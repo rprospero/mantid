@@ -215,6 +215,29 @@ void MplFigureCanvas::addSubPlot(int subplotLayout) {
 }
 
 /**
+ * Plot lines to the current axis
+ * @param x A container of X points. Requires support for forward iteration.
+ * @param y A container of Y points. Requires support for forward iteration.
+ * @param format A format string for the line/markers
+ */
+template <typename XArrayType, typename YArrayType>
+void MplFigureCanvas::plotLine(const XArrayType &x, const YArrayType &y,
+                               const char *format) {
+  ScopedPythonGIL gil;
+  NDArray1D xnp(x), ynp(y);
+  auto axes = m_pydata->gca();
+  // This will return a list of lines but we know we are only plotting 1
+  auto lines =
+      PyObject_CallMethod(axes.get(), PYSTR_LITERAL("plot"),
+                          PYSTR_LITERAL("(OOs)"), xnp.get(), ynp.get(), format);
+  if (!lines) {
+    throw PythonError(errorToString());
+  }
+  m_pydata->lines.emplace_back(PythonObject(NewRef(PyList_GetItem(lines, 0))));
+  detail::decref(lines);
+}
+
+/**
  * Remove a line from the canvas based on the index
  * @param index The index of the line to remove. If it does not exist then
  * this is a no-op.
@@ -229,6 +252,17 @@ void MplFigureCanvas::removeLine(const size_t index) {
   lines.erase(posIter);
   PythonObject(NewRef(PyObject_CallMethod(line.get(), PYSTR_LITERAL("remove"),
                                           PYSTR_LITERAL(""), nullptr)));
+}
+
+/**
+ * Clear the current axes of artists
+ */
+void MplFigureCanvas::clearLines() {
+  ScopedPythonGIL gil;
+  auto axes = m_pydata->gca();
+  PythonObject(NewRef(PyObject_CallMethod(axes.get(), PYSTR_LITERAL("clear"),
+                                          PYSTR_LITERAL(""), nullptr)));
+  m_pydata->lines.clear();
 }
 
 /**
@@ -278,29 +312,6 @@ void MplFigureCanvas::setScale(const Axes::Scale type, double min, double max) {
   if (!result)
     throw PythonError(errorToString());
   detail::decref(result);
-}
-
-/**
- * Plot lines to the current axis
- * @param x A container of X points. Requires support for forward iteration.
- * @param y A container of Y points. Requires support for forward iteration.
- * @param format A format string for the line/markers
- */
-template <typename XArrayType, typename YArrayType>
-void MplFigureCanvas::plotLine(const XArrayType &x, const YArrayType &y,
-                               const char *format) {
-  ScopedPythonGIL gil;
-  NDArray1D xnp(x), ynp(y);
-  auto axes = m_pydata->gca();
-  // This will return a list of lines but we know we are only plotting 1
-  auto lines =
-      PyObject_CallMethod(axes.get(), PYSTR_LITERAL("plot"),
-                          PYSTR_LITERAL("(OOs)"), xnp.get(), ynp.get(), format);
-  if (!lines) {
-    throw PythonError(errorToString());
-  }
-  m_pydata->lines.emplace_back(PythonObject(NewRef(PyList_GetItem(lines, 0))));
-  detail::decref(lines);
 }
 
 //------------------------------------------------------------------------------

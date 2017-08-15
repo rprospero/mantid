@@ -47,6 +47,15 @@ public:
                       canvas.nlines());
   }
 
+  void test_Clear_Removes_All_Lines() {
+    MplFigureCanvas canvas;
+    std::vector<double> data{1, 2, 3, 4, 5};
+    canvas.plotLine(data, data, "r-");
+    canvas.plotLine(data, data, "bo");
+    canvas.clearLines();
+    TSM_ASSERT_EQUALS("clear should remove all lines", 0, canvas.nlines());
+  }
+
   void test_Setting_Axis_And_Figure_Titles() {
     MplFigureCanvas canvas;
     canvas.setLabel(Axes::Label::X, "new x label");
